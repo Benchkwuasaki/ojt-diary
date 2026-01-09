@@ -1,14 +1,18 @@
 import { useState, useEffect } from 'react';
 import './AuthForm.css';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Zap, Users } from 'lucide-react';
-import benchlogo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png'; // Make sure this path is correct
+import benchlogo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png';
 
-function AuthForm() {
+// Your InfinityFree domain
+const API_URL = 'https://ojt-diary.42web.io'; // Replace with your InfinityFree domain
+
+function AuthForm({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -28,16 +32,52 @@ function AuthForm() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isLogin) {
-      console.log('Login attempt:', { email: formData.email, password: formData.password });
-    } else {
-      if (formData.password !== formData.confirmPassword) {
-        alert('Passwords do not match!');
-        return;
+    setIsLoading(true);
+
+    try {
+      const endpoint = isLogin ? '/login.php' : '/register.php';
+      const payload = isLogin
+        ? { email: formData.email, password: formData.password }
+        : { 
+            name: formData.name, 
+            email: formData.email, 
+            password: formData.password,
+            confirmPassword: formData.confirmPassword
+          };
+
+      const response = await fetch(`${API_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(result.message);
+        if (isLogin && result.user) {
+          // Save user data and trigger login
+          localStorage.setItem('user', JSON.stringify(result.user));
+          localStorage.setItem('isAuthenticated', 'true');
+          if (onLogin) {
+            onLogin(result.user);
+          }
+        } else if (!isLogin) {
+          // Switch to login after successful registration
+          handleSwitchForm();
+        }
+      } else {
+        alert(result.message || 'Something went wrong');
       }
-      console.log('Register attempt:', formData);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -82,19 +122,17 @@ function AuthForm() {
         <div className="brand-panel">
           <div className="brand-logo">
             {isMobile ? (
-              // Mobile: Show image logo
               <img 
                 src={benchlogo} 
                 alt="OJT Diary Logo" 
                 className="mobile-logo-img"
               />
             ) : (
-              // Desktop: Show original logo
               <>
                 <div className="logo-circle">
                   <span>L</span>
                 </div>
-                <h1>LoginPro</h1>
+                <h1>OJT Diary</h1>
               </>
             )}
           </div>
@@ -107,7 +145,6 @@ function AuthForm() {
               }
             </p>
             
-            {/* Cards Container - Hide on mobile */}
             <div className="brand-cards">
               <div className="card">
                 <div className="card-icon">
@@ -129,7 +166,6 @@ function AuthForm() {
               </div>
             </div>
             
-            {/* Made by lipang */}
             <div className="made-by">@ made by lipang</div>
           </div>
           
@@ -196,6 +232,7 @@ function AuthForm() {
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength="6"
               />
               <button 
                 type="button" 
@@ -219,6 +256,7 @@ function AuthForm() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required={!isLogin}
+                minLength="6"
               />
               <button 
                 type="button" 
@@ -230,26 +268,12 @@ function AuthForm() {
               <div className="input-border"></div>
             </div>
 
-            {/* Form Options */}
-            <div className={`form-options ${!isLogin ? 'conditional' : ''}`} 
-                 style={{ 
-                   maxHeight: isLogin ? '50px' : '0', 
-                   opacity: isLogin ? '1' : '0',
-                   overflow: 'hidden',
-                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                 }}>
-              <label className="checkbox-container">
-                <input type="checkbox" />
-                <span className="checkmark"></span>
-                Remember me
-              </label>
-              <a href="#forgot" className="forgot-password">Forgot password?</a>
-            </div>
-
             {/* Submit Button */}
-            <button type="submit" className="submit-button">
-              <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
-              <ArrowRight size={18} />
+            <button type="submit" className="submit-button" disabled={isLoading}>
+              <span>
+                {isLoading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
+              </span>
+              {!isLoading && <ArrowRight size={18} />}
             </button>
           </form>
 
