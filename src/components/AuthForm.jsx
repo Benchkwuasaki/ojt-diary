@@ -4,7 +4,7 @@ import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Zap, Users } from 'l
 import benchlogo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png';
 
 // Your InfinityFree domain
-const API_URL = 'https://ojt-diary.42web.io'; // Replace with your InfinityFree domain
+//  // Replace with your InfinityFree domain
 const API_URL = 'https://corsproxy.io/?https://ojt-diary.42web.io';
 
 function AuthForm({ onLogin }) {
