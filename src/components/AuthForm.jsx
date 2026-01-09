@@ -77,7 +77,7 @@ function AuthForm() {
             <h1>LoginPro</h1>
           </div>
           <div className="brand-content">
-            <h2>{isLogin ? 'Welcome Back' : 'Join Us'}</h2>
+            <h2>{isLogin ? 'Welcome To Ojt Diary' : 'Join Us'}</h2>
             <p className="brand-subtitle">
               {isLogin 
                 ? 'Sign in to access your dashboard and continue your journey.'
