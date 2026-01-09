@@ -33,53 +33,79 @@ function AuthForm({ onLogin }) {
   }, []);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  e.preventDefault();
+  setIsLoading(true);
 
+  // Debug: Log what we're sending
+  console.log('Attempting registration with:', {
+    name: formData.name,
+    email: formData.email,
+    passwordLength: formData.password.length,
+    confirmPasswordLength: formData.confirmPassword.length
+  });
+
+  try {
+    const endpoint = isLogin ? '/login.php' : '/register.php';
+    const payload = isLogin
+      ? { email: formData.email, password: formData.password }
+      : { 
+          name: formData.name, 
+          email: formData.email, 
+          password: formData.password,
+          confirmPassword: formData.confirmPassword
+        };
+
+    console.log('Sending to:', `${API_URL}${endpoint}`);
+    console.log('Payload:', payload);
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload)
+    });
+
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+
+    // Try to get response text first
+    const responseText = await response.text();
+    console.log('Raw response:', responseText);
+
+    // Try to parse as JSON
+    let result;
     try {
-      const endpoint = isLogin ? '/login.php' : '/register.php';
-      const payload = isLogin
-        ? { email: formData.email, password: formData.password }
-        : { 
-            name: formData.name, 
-            email: formData.email, 
-            password: formData.password,
-            confirmPassword: formData.confirmPassword
-          };
-
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        alert(result.message);
-        if (isLogin && result.user) {
-          // Save user data and trigger login
-          localStorage.setItem('user', JSON.stringify(result.user));
-          localStorage.setItem('isAuthenticated', 'true');
-          if (onLogin) {
-            onLogin(result.user);
-          }
-        } else if (!isLogin) {
-          // Switch to login after successful registration
-          handleSwitchForm();
-        }
-      } else {
-        alert(result.message || 'Something went wrong');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Network error. Please try again.');
-    } finally {
-      setIsLoading(false);
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('JSON Parse Error:', parseError);
+      alert('Server returned invalid response: ' + responseText.substring(0, 100));
+      return;
     }
-  };
+
+    if (result.success) {
+      alert(result.message);
+      if (isLogin && result.user) {
+        localStorage.setItem('user', JSON.stringify(result.user));
+        localStorage.setItem('isAuthenticated', 'true');
+        if (onLogin) {
+          onLogin(result.user);
+        }
+      } else if (!isLogin) {
+        handleSwitchForm();
+      }
+    } else {
+      alert(result.message || 'Something went wrong');
+    }
+  } catch (error) {
+    console.error('Fetch Error Details:', error);
+    console.error('Error name:', error.name);
+    console.error('Error message:', error.message);
+    alert('Network error: ' + error.message);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleChange = (e) => {
     setFormData({
