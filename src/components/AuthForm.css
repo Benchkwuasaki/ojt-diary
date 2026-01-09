@@ -154,6 +154,7 @@
   font-weight: 700;
   margin-bottom: 14px;
   line-height: 1.2;
+  transition: all 0.3s ease;
 }
 
 .brand-subtitle {
@@ -162,6 +163,7 @@
   opacity: 0.9;
   margin-bottom: 20px;
   max-width: 350px;
+  transition: all 0.3s ease;
 }
 
 /* Cards Container */
@@ -173,6 +175,7 @@
   margin-bottom: 30px;
   position: relative;
   height: 120px;
+  transition: all 0.4s ease;
 }
 
 .card {
@@ -207,6 +210,7 @@
   font-weight: 700;
   margin-bottom: 8px;
   opacity: 0.9;
+  transition: all 0.3s ease;
 }
 
 .card-label {
@@ -215,6 +219,7 @@
   letter-spacing: 0.5px;
   opacity: 0.8;
   text-align: center;
+  transition: all 0.3s ease;
 }
 
 .card:nth-child(1) {
@@ -243,7 +248,7 @@
   box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
 }
 
-/* Made by lipang text - Always visible */
+/* Made by lipang text */
 .made-by {
   font-size: 12px;
   opacity: 0.7;
@@ -251,12 +256,14 @@
   margin: 15px 0 20px 0;
   font-style: italic;
   letter-spacing: 0.5px;
+  transition: all 0.3s ease;
 }
 
 .switch-prompt {
   font-size: 15px;
   opacity: 0.9;
   margin-top: auto;
+  transition: all 0.3s ease;
 }
 
 .switch-link {
@@ -279,13 +286,20 @@
   transform: translateX(3px);
 }
 
-/* Form Panel */
+/* Form Panel - Enhanced for smooth transitions */
 .form-panel {
   padding: 40px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  transition: all 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.form-panel.switching {
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .form-header {
@@ -307,16 +321,34 @@
   transition: all 0.3s ease;
 }
 
-/* Modern Form */
+/* Modern Form - Enhanced for smooth transitions */
 .modern-form {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  transition: all 0.4s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Conditional form fields animation */
 .input-field {
   position: relative;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.input-field.conditional {
+  max-height: 0;
+  opacity: 0;
+  margin: 0;
+  transform: translateY(-10px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-field.conditional.visible {
+  max-height: 100px;
+  opacity: 1;
+  margin: 0;
+  transform: translateY(0);
 }
 
 .input-icon {
@@ -326,6 +358,7 @@
   transform: translateY(-50%);
   color: #64748b;
   z-index: 1;
+  transition: all 0.3s ease;
 }
 
 .input-field input {
@@ -387,6 +420,7 @@
   justify-content: space-between;
   align-items: center;
   margin-top: 8px;
+  transition: all 0.3s ease;
 }
 
 .checkbox-container {
@@ -396,6 +430,7 @@
   cursor: pointer;
   font-size: 14px;
   color: #64748b;
+  transition: all 0.3s ease;
 }
 
 .checkbox-container input {
@@ -468,13 +503,14 @@
   transform: translateY(0);
 }
 
-/* Mobile Switch Prompt - Hidden by default */
+/* Mobile Switch Prompt */
 .mobile-switch-prompt {
   display: none;
   text-align: center;
   margin-top: 30px;
   padding-top: 20px;
   border-top: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
 }
 
 .mobile-switch-prompt p {
@@ -495,20 +531,9 @@
   transform: translateX(3px);
 }
 
-/* Form switch animation */
-.form-panel {
-  animation: fadeIn 0.4s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0.8;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Brand panel content transition */
+.brand-content {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Responsive Design */
@@ -542,12 +567,10 @@
 }
 
 @media (max-width: 900px) {
-  /* Hide cards on tablet/ipad */
   .brand-cards {
     display: none;
   }
   
-  /* Keep made-by visible */
   .made-by {
     display: block;
     margin: 15px 0 20px 0;
@@ -583,12 +606,10 @@
     flex: 1;
   }
   
-  /* Hide cards on mobile */
   .brand-cards {
     display: none;
   }
   
-  /* Show made-by on mobile */
   .made-by {
     display: block;
     margin: 15px 0 10px 0;
@@ -622,7 +643,6 @@
     font-size: 14px;
   }
   
-  /* Show mobile switch prompt, hide desktop one */
   .switch-prompt {
     display: none;
   }
@@ -676,7 +696,6 @@
     font-size: 20px;
   }
   
-  /* Made-by on mobile */
   .made-by {
     font-size: 11px;
     margin: 12px 0 8px 0;
@@ -741,7 +760,6 @@
     margin-bottom: 6px;
   }
   
-  /* Made-by on mobile */
   .made-by {
     font-size: 10px;
     margin: 10px 0 6px 0;
@@ -806,7 +824,6 @@
     margin-bottom: 4px;
   }
   
-  /* Made-by on mobile */
   .made-by {
     font-size: 9px;
     margin: 8px 0 4px 0;
@@ -831,7 +848,7 @@
   }
 }
 
-/* Tablet landscape optimization */
+/* Tablet landscape */
 @media (min-width: 769px) and (max-width: 1024px) and (orientation: landscape) {
   .auth-wrapper {
     padding: 10px;
@@ -903,7 +920,9 @@
   .switch-link,
   .submit-button,
   .input-field input,
-  .form-panel {
+  .form-panel,
+  .brand-content,
+  .input-field {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

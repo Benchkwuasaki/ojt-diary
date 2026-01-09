@@ -6,7 +6,7 @@ function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -35,7 +35,10 @@ function AuthForm() {
   };
 
   const handleSwitchForm = () => {
-    setIsAnimating(true);
+    // Start switching animation
+    setIsSwitching(true);
+    
+    // Wait for fade out animation
     setTimeout(() => {
       setIsLogin(!isLogin);
       setFormData({
@@ -44,17 +47,13 @@ function AuthForm() {
         name: '',
         confirmPassword: ''
       });
-      setIsAnimating(false);
-    }, 200);
+      
+      // Fade in after form change
+      setTimeout(() => {
+        setIsSwitching(false);
+      }, 50);
+    }, 300); // Matches CSS transition duration
   };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsAnimating(false);
-    }, 400);
-    
-    return () => clearTimeout(timer);
-  }, [isLogin]);
 
   return (
     <div className="auth-wrapper">
@@ -67,7 +66,7 @@ function AuthForm() {
       </div>
 
       {/* Main Container */}
-      <div className={`auth-container ${isAnimating ? 'animating' : ''}`}>
+      <div className={`auth-container ${isSwitching ? 'switching' : ''}`}>
         {/* Left Panel - Branding */}
         <div className="brand-panel">
           <div className="brand-logo">
@@ -85,7 +84,7 @@ function AuthForm() {
               }
             </p>
             
-            {/* Cards Container - Only visible on desktop/iPad */}
+            {/* Cards Container */}
             <div className="brand-cards">
               <div className="card">
                 <div className="card-icon">
@@ -107,7 +106,7 @@ function AuthForm() {
               </div>
             </div>
             
-            {/* Made by lipang - Only visible on desktop/iPad */}
+            {/* Made by lipang */}
             <div className="made-by">@ made by lipang</div>
           </div>
           
@@ -123,30 +122,30 @@ function AuthForm() {
         </div>
 
         {/* Right Panel - Form */}
-        <div className={`form-panel ${isLogin ? 'login' : 'register'}`}>
+        <div className={`form-panel ${isSwitching ? 'switching' : ''} ${isLogin ? 'login' : 'register'}`}>
           <div className="form-header">
             <h2>{isLogin ? 'Sign In' : 'Create Account'}</h2>
             <p>Enter your details to {isLogin ? 'sign in to your account' : 'create a new account'}</p>
           </div>
 
           <form onSubmit={handleSubmit} className="modern-form">
-            {!isLogin && (
-              <div className="input-field">
-                <div className="input-icon">
-                  <User size={18} />
-                </div>
-                <input
-                  type="text"
-                  name="name"
-                  placeholder="Full Name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                />
-                <div className="input-border"></div>
+            {/* Name Field with conditional animation */}
+            <div className={`input-field ${!isLogin ? 'conditional visible' : 'conditional'}`}>
+              <div className="input-icon">
+                <User size={18} />
               </div>
-            )}
+              <input
+                type="text"
+                name="name"
+                placeholder="Full Name"
+                value={formData.name}
+                onChange={handleChange}
+                required={!isLogin}
+              />
+              <div className="input-border"></div>
+            </div>
 
+            {/* Email Field */}
             <div className="input-field">
               <div className="input-icon">
                 <Mail size={18} />
@@ -162,6 +161,7 @@ function AuthForm() {
               <div className="input-border"></div>
             </div>
 
+            {/* Password Field */}
             <div className="input-field">
               <div className="input-icon">
                 <Lock size={18} />
@@ -184,48 +184,53 @@ function AuthForm() {
               <div className="input-border"></div>
             </div>
 
-            {!isLogin && (
-              <div className="input-field">
-                <div className="input-icon">
-                  <Lock size={18} />
-                </div>
-                <input
-                  type={showConfirmPassword ? "text" : "password"}
-                  name="confirmPassword"
-                  placeholder="Confirm Password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  required
-                />
-                <button 
-                  type="button" 
-                  className="password-toggle"
-                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-                <div className="input-border"></div>
+            {/* Confirm Password Field with conditional animation */}
+            <div className={`input-field ${!isLogin ? 'conditional visible' : 'conditional'}`}>
+              <div className="input-icon">
+                <Lock size={18} />
               </div>
-            )}
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                name="confirmPassword"
+                placeholder="Confirm Password"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                required={!isLogin}
+              />
+              <button 
+                type="button" 
+                className="password-toggle"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+              <div className="input-border"></div>
+            </div>
 
-            {isLogin && (
-              <div className="form-options">
-                <label className="checkbox-container">
-                  <input type="checkbox" />
-                  <span className="checkmark"></span>
-                  Remember me
-                </label>
-                <a href="#forgot" className="forgot-password">Forgot password?</a>
-              </div>
-            )}
+            {/* Form Options (Login only) */}
+            <div className={`form-options ${!isLogin ? 'conditional' : ''}`} 
+                 style={{ 
+                   maxHeight: isLogin ? '50px' : '0', 
+                   opacity: isLogin ? '1' : '0',
+                   overflow: 'hidden',
+                   transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                 }}>
+              <label className="checkbox-container">
+                <input type="checkbox" />
+                <span className="checkmark"></span>
+                Remember me
+              </label>
+              <a href="#forgot" className="forgot-password">Forgot password?</a>
+            </div>
 
+            {/* Submit Button */}
             <button type="submit" className="submit-button">
               <span>{isLogin ? 'Sign In' : 'Create Account'}</span>
               <ArrowRight size={18} />
             </button>
           </form>
 
-          {/* Mobile Switch Prompt - Shows only on mobile */}
+          {/* Mobile Switch Prompt */}
           <div className="mobile-switch-prompt">
             <p>
               {isLogin ? "Don't have an account?" : "Already have an account?"}
