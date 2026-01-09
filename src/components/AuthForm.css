@@ -932,3 +932,57 @@
     animation: none;
   }
 }
+/* Add to existing CSS, preferably in the mobile media query section */
+
+/* Mobile logo image styles */
+.mobile-logo-img {
+  display: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Hide the original logo elements on mobile */
+@media (max-width: 768px) {
+  .brand-logo .logo-circle,
+  .brand-logo h1 {
+    display: none;
+  }
+  
+  .mobile-logo-img {
+    display: block;
+  }
+  
+  /* Center the logo image */
+  .brand-logo {
+    justify-content: center;
+  }
+  
+  .brand-logo h1 {
+    display: none;
+  }
+}
+
+/* Adjust size for smaller devices */
+@media (max-width: 640px) {
+  .mobile-logo-img {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-logo-img {
+    width: 50px;
+    height: 50px;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobile-logo-img {
+    width: 35px;
+    height: 35px;
+  }
+}

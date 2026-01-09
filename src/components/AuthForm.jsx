@@ -1,18 +1,32 @@
 import { useState, useEffect } from 'react';
 import './AuthForm.css';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Zap, Users } from 'lucide-react';
+import benchlogo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png'; // Make sure this path is correct
 
 function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     name: '',
     confirmPassword: ''
   });
+
+  // Check if mobile on mount and resize
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -35,10 +49,8 @@ function AuthForm() {
   };
 
   const handleSwitchForm = () => {
-    // Start switching animation
     setIsSwitching(true);
     
-    // Wait for fade out animation
     setTimeout(() => {
       setIsLogin(!isLogin);
       setFormData({
@@ -48,11 +60,10 @@ function AuthForm() {
         confirmPassword: ''
       });
       
-      // Fade in after form change
       setTimeout(() => {
         setIsSwitching(false);
       }, 50);
-    }, 300); // Matches CSS transition duration
+    }, 300);
   };
 
   return (
@@ -70,13 +81,25 @@ function AuthForm() {
         {/* Left Panel - Branding */}
         <div className="brand-panel">
           <div className="brand-logo">
-            <div className="logo-circle">
-              <span>L</span>
-            </div>
-            <h1>LoginPro</h1>
+            {isMobile ? (
+              // Mobile: Show image logo
+              <img 
+                src={benchlogo} 
+                alt="OJT Diary Logo" 
+                className="mobile-logo-img"
+              />
+            ) : (
+              // Desktop: Show original logo
+              <>
+                <div className="logo-circle">
+                  <span>L</span>
+                </div>
+                <h1>LoginPro</h1>
+              </>
+            )}
           </div>
           <div className="brand-content">
-            <h2>{isLogin ? 'Welcome To Ojt Diary' : 'Join Us'}</h2>
+            <h2>{isLogin ? 'Welcome To OJT Diary' : 'Join Us'}</h2>
             <p className="brand-subtitle">
               {isLogin 
                 ? 'Sign in to access your dashboard and continue your journey.'
@@ -84,7 +107,7 @@ function AuthForm() {
               }
             </p>
             
-            {/* Cards Container */}
+            {/* Cards Container - Hide on mobile */}
             <div className="brand-cards">
               <div className="card">
                 <div className="card-icon">
@@ -129,7 +152,7 @@ function AuthForm() {
           </div>
 
           <form onSubmit={handleSubmit} className="modern-form">
-            {/* Name Field with conditional animation */}
+            {/* Name Field */}
             <div className={`input-field ${!isLogin ? 'conditional visible' : 'conditional'}`}>
               <div className="input-icon">
                 <User size={18} />
@@ -184,7 +207,7 @@ function AuthForm() {
               <div className="input-border"></div>
             </div>
 
-            {/* Confirm Password Field with conditional animation */}
+            {/* Confirm Password Field */}
             <div className={`input-field ${!isLogin ? 'conditional visible' : 'conditional'}`}>
               <div className="input-icon">
                 <Lock size={18} />
@@ -207,7 +230,7 @@ function AuthForm() {
               <div className="input-border"></div>
             </div>
 
-            {/* Form Options (Login only) */}
+            {/* Form Options */}
             <div className={`form-options ${!isLogin ? 'conditional' : ''}`} 
                  style={{ 
                    maxHeight: isLogin ? '50px' : '0', 
