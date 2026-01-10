@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - UPDATED (removed the green button)
+// src/components/Sidebar.jsx - UPDATED WITH LOGO
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -18,6 +18,7 @@ import {
 import './Sidebar.css';
 import { auth } from '../firebase/config';
 import { signOut } from 'firebase/auth';
+import logo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png'; // Adjust path as needed
 
 function Sidebar({ 
   user, 
@@ -108,13 +109,13 @@ function Sidebar({
           transition: 'transform 0.3s ease',
         }}
       >
-        {/* Desktop Toggle Button */}
+        {/* Desktop Toggle Button - NOW MORE VISIBLE */}
         {!isMobile && (
           <button 
             className="sidebar-toggle"
             onClick={toggleSidebar}
           >
-            {isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         )}
 
@@ -131,10 +132,11 @@ function Sidebar({
         {/* Sidebar Header */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <div className="logo-circle">
-              <span>OJT</span>
+            <div className="logo-container">
+              {/* Logo Image - Replaced the green OJT text */}
+              <img src={logo} alt="OJT Diary Logo" />
             </div>
-            {!isCollapsed && <h2>OJT Diary</h2>}
+            {/* Removed the OJT Diary text */}
           </div>
           
           {!isCollapsed && user && (
@@ -185,7 +187,6 @@ function Sidebar({
         </nav>
 
         {/* REMOVED: Quick Actions section with the green button */}
-        {/* The green "New OJT Entry" button has been removed */}
 
         {/* Logout Section */}
         <div className="sidebar-footer">
