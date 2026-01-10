@@ -1,7 +1,11 @@
-// src/components/AuthForm.jsx
+// Update the AuthForm.jsx component
+
 import { useState, useEffect } from 'react';
 import './AuthForm.css';
-import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Zap, Users } from 'lucide-react';
+import { 
+  Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Zap, Users, 
+  AlertCircle, X 
+} from 'lucide-react';
 import benchlogo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png';
 import { auth, db } from '../firebase/config';
 import { 
@@ -11,6 +15,55 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
+// Error Notification Component
+const ErrorNotification = ({ message, onClose }) => {
+  const [isVisible, setIsVisible] = useState(true);
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleClose();
+    }, 5000); // Auto dismiss after 5 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      onClose();
+    }, 500);
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <div className={`error-notification ${isClosing ? 'hide' : 'show'}`}>
+      <div className="error-icon">
+        <AlertCircle size={20} />
+      </div>
+      <div className="error-content">
+        <h4 className="error-title">
+          <AlertCircle size={16} />
+          Authentication Error
+        </h4>
+        <p className="error-message">{message}</p>
+      </div>
+      <button 
+        className="error-close" 
+        onClick={handleClose}
+        aria-label="Close error message"
+      >
+        <X size={18} />
+      </button>
+      <div className="error-progress">
+        <div className="error-progress-bar"></div>
+      </div>
+    </div>
+  );
+};
+
 function AuthForm({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -18,6 +71,7 @@ function AuthForm({ onLogin }) {
   const [isSwitching, setIsSwitching] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -36,9 +90,22 @@ function AuthForm({ onLogin }) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const showError = (errorMessage) => {
+    setError(errorMessage);
+    // Auto-clear error after 5 seconds
+    setTimeout(() => {
+      setError(null);
+    }, 5000);
+  };
+
+  const clearError = () => {
+    setError(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    clearError(); // Clear any existing errors
 
     try {
       if (isLogin) {
@@ -59,7 +126,6 @@ function AuthForm({ onLogin }) {
         localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('isAuthenticated', 'true');
         
-        alert('Login successful!');
         if (onLogin) {
           onLogin(user);
         }
@@ -68,7 +134,14 @@ function AuthForm({ onLogin }) {
         
         // Validate passwords match
         if (formData.password !== formData.confirmPassword) {
-          alert('Passwords do not match!');
+          showError('Passwords do not match!');
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate password strength
+        if (formData.password.length < 6) {
+          showError('Password should be at least 6 characters long.');
           setIsLoading(false);
           return;
         }
@@ -93,8 +166,9 @@ function AuthForm({ onLogin }) {
           role: 'student' // default role
         });
 
-        alert('Registration successful! Please sign in.');
+        // Switch to login form after successful registration
         handleSwitchForm();
+        showError('Registration successful! Please sign in.');
       }
     } catch (error) {
       console.error('Auth Error:', error);
@@ -107,7 +181,7 @@ function AuthForm({ onLogin }) {
           errorMessage = 'This email is already registered. Please sign in instead.';
           break;
         case 'auth/invalid-email':
-          errorMessage = 'Invalid email address.';
+          errorMessage = 'Please enter a valid email address.';
           break;
         case 'auth/weak-password':
           errorMessage = 'Password should be at least 6 characters.';
@@ -116,16 +190,25 @@ function AuthForm({ onLogin }) {
           errorMessage = 'No account found with this email.';
           break;
         case 'auth/wrong-password':
-          errorMessage = 'Incorrect password.';
+          errorMessage = 'Incorrect password. Please try again.';
           break;
         case 'auth/too-many-requests':
           errorMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        case 'auth/network-request-failed':
+          errorMessage = 'Network error. Please check your connection.';
+          break;
+        case 'auth/user-disabled':
+          errorMessage = 'This account has been disabled.';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Email/password sign-in is not enabled.';
           break;
         default:
           errorMessage = error.message;
       }
       
-      alert(errorMessage);
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -136,10 +219,13 @@ function AuthForm({ onLogin }) {
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Clear error when user starts typing
+    if (error) clearError();
   };
 
   const handleSwitchForm = () => {
     setIsSwitching(true);
+    clearError(); // Clear error when switching forms
     
     setTimeout(() => {
       setIsLogin(!isLogin);
@@ -158,6 +244,14 @@ function AuthForm({ onLogin }) {
 
   return (
     <div className="auth-wrapper">
+      {/* Error Notification */}
+      {error && (
+        <ErrorNotification 
+          message={error} 
+          onClose={clearError} 
+        />
+      )}
+
       {/* Background Elements */}
       <div className="background-elements">
         <div className="gradient-ball ball-1"></div>
