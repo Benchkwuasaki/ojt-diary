@@ -1,4 +1,4 @@
-// src/App.jsx - UPDATED
+// src/App.jsx - UPDATED (final)
 import { useState, useEffect } from 'react';
 import './App.css';
 import AuthForm from './components/AuthForm';

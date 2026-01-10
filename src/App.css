@@ -1,3 +1,4 @@
+/* src/App.css */
 #root {
   width: 100%;
   min-height: 100vh;
@@ -23,29 +24,11 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
 .App {
   min-height: 100vh;
 }
 
-.main-content {
-  margin-left: 250px;
-  padding: 20px;
-  transition: margin-left 0.3s ease;
-  min-height: 100vh;
-  background: #f8fafc;
-}
-
-.main-content.expanded {
-  margin-left: 70px;
-}
-
-@media (max-width: 768px) {
-  .main-content {
-    margin-left: 0;
-    padding: 15px;
-  }
-}
-/* Add to src/App.css */
 .loading-screen {
   display: flex;
   justify-content: center;
@@ -85,72 +68,7 @@ body {
   font-size: 24px;
   color: #6B7280;
   font-weight: 500;
-}
-
-/* Add smooth transitions */
-* {
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-/* Improve focus states */
-button:focus,
-input:focus,
-select:focus,
-textarea:focus {
-  outline: 2px solid #22c55e;
-  outline-offset: 2px;
-}
-
-/* Better scroll behavior */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Selection color */
-::selection {
-  background-color: rgba(34, 197, 94, 0.2);
-  color: #166534;
-}
-/* Add to src/App.css */
-.loading-screen {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  background: linear-gradient(135deg, #417bb5 0%, #b0974b 100%);
-}
-
-.loading-content {
-  background: white;
-  padding: 40px;
-  border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-  text-align: center;
-}
-
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #22c55e;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto 20px;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.coming-soon {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 60vh;
-  font-size: 24px;
-  color: #6B7280;
-  font-weight: 500;
+  background: transparent;
 }
 
 /* Main content area */

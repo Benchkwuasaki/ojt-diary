@@ -1,9 +1,10 @@
-/* src/components/OJTEntries.css */
-
+/* src/components/OJTEntries.css - UPDATED */
 .ojt-entries-container {
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
+  background: transparent; /* Changed from default to transparent */
+  min-height: calc(100vh - 48px); /* Adjust for padding */
 }
 
 /* Header */
@@ -512,8 +513,8 @@
   box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
 }
 
-/* Buttons */
-.add-entry-btn {
+/* Buttons - REMOVED the .add-entry-btn style since we're removing it */
+/* .add-entry-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -531,7 +532,7 @@
 .add-entry-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
-}
+} */
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -541,7 +542,7 @@
   
   .entries-header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
   }
   
   .stats-grid {

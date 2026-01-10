@@ -1,4 +1,5 @@
-// In the import section of OJTEntries.jsx, add User:
+// src/components/OJTEntries.jsx - UPDATED
+import React, { useState, useEffect } from 'react';
 import { 
   PlusCircle, 
   Edit, 
@@ -10,13 +11,13 @@ import {
   FileText,
   Search,
   Filter,
-  Download,
   Eye,
   X,
   ChevronUp,
   ChevronDown,
-  User  // Add this line
+  User  // Added User import
 } from 'lucide-react';
+import './OJTEntries.css';
 
 function OJTEntries() {
   const [entries, setEntries] = useState([
@@ -177,16 +178,7 @@ function OJTEntries() {
           <h1 className="entries-title">OJT Entries</h1>
           <p className="entries-subtitle">Track your On-the-Job Training activities and progress</p>
         </div>
-        <button 
-          className="add-entry-btn"
-          onClick={() => {
-            resetForm();
-            setIsModalOpen(true);
-          }}
-        >
-          <PlusCircle size={18} />
-          Add New Entry
-        </button>
+        {/* REMOVED: The duplicate "Add New Entry" button since it's already in the sidebar */}
       </div>
 
       {/* Stats Cards */}
