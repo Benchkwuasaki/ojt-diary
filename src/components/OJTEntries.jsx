@@ -1,7 +1,7 @@
-// src/components/OJTEntries.jsx - UPDATED
+// src/components/OJTEntries.jsx - REVISED COMPLETE CODE
 import React, { useState, useEffect } from 'react';
 import { 
-  PlusCircle, 
+  Plus, 
   Edit, 
   Trash2, 
   CheckCircle, 
@@ -15,7 +15,9 @@ import {
   X,
   ChevronUp,
   ChevronDown,
-  User  // Added User import
+  User,
+  BarChart3,
+  TrendingUp
 } from 'lucide-react';
 import './OJTEntries.css';
 
@@ -24,32 +26,62 @@ function OJTEntries() {
     {
       id: 1,
       title: 'Orientation & Company Tour',
-      description: 'Introduction to company culture and workplace safety procedures.',
+      description: 'Introduction to company culture and workplace safety procedures. Learned about company values and workplace ethics.',
       date: '2024-01-10',
       status: 'completed',
       hours: 8,
       supervisor: 'John Smith',
-      skills: ['Communication', 'Safety']
+      skills: ['Communication', 'Safety', 'Company Culture']
     },
     {
       id: 2,
       title: 'Software Development Training',
-      description: 'Learning React.js and modern web development practices.',
+      description: 'Learning React.js and modern web development practices. Built a sample dashboard application.',
       date: '2024-01-12',
       status: 'in-progress',
       hours: 6,
       supervisor: 'Sarah Johnson',
-      skills: ['React.js', 'JavaScript', 'CSS']
+      skills: ['React.js', 'JavaScript', 'CSS', 'Git']
     },
     {
       id: 3,
       title: 'Team Project Collaboration',
-      description: 'Working with team on new feature implementation.',
+      description: 'Working with team on new feature implementation. Participated in daily standups and code reviews.',
       date: '2024-01-15',
       status: 'pending',
       hours: 4,
       supervisor: 'Mike Chen',
-      skills: ['Teamwork', 'Problem Solving']
+      skills: ['Teamwork', 'Problem Solving', 'Agile']
+    },
+    {
+      id: 4,
+      title: 'Client Meeting Preparation',
+      description: 'Prepared documentation and presentation for upcoming client meeting. Assisted in creating project timelines.',
+      date: '2024-01-18',
+      status: 'completed',
+      hours: 5,
+      supervisor: 'Emma Wilson',
+      skills: ['Documentation', 'Presentation', 'Time Management']
+    },
+    {
+      id: 5,
+      title: 'Database Optimization',
+      description: 'Worked on optimizing database queries and improving application performance.',
+      date: '2024-01-20',
+      status: 'in-progress',
+      hours: 7,
+      supervisor: 'David Lee',
+      skills: ['SQL', 'Performance', 'Database']
+    },
+    {
+      id: 6,
+      title: 'Code Review Session',
+      description: 'Participated in peer code review sessions and learned best practices for code quality.',
+      date: '2024-01-22',
+      status: 'completed',
+      hours: 3,
+      supervisor: 'Sarah Johnson',
+      skills: ['Code Review', 'Best Practices', 'Quality Assurance']
     }
   ]);
 
@@ -60,6 +92,7 @@ function OJTEntries() {
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
+  const [activeFilter, setActiveFilter] = useState('all');
   
   const [formData, setFormData] = useState({
     title: '',
@@ -79,15 +112,26 @@ function OJTEntries() {
 
   const skillOptions = [
     'Communication', 'Teamwork', 'Problem Solving', 'React.js', 'JavaScript', 
-    'CSS', 'HTML', 'Git', 'Testing', 'Documentation', 'Safety', 'Time Management'
+    'CSS', 'HTML', 'Git', 'Testing', 'Documentation', 'Safety', 'Time Management',
+    'Company Culture', 'Presentation', 'Agile', 'SQL', 'Performance', 'Database',
+    'Code Review', 'Best Practices', 'Quality Assurance'
   ];
+
+  // Stats calculation
+  const totalEntries = entries.length;
+  const completedEntries = entries.filter(e => e.status === 'completed').length;
+  const inProgressEntries = entries.filter(e => e.status === 'in-progress').length;
+  const totalHours = entries.reduce((total, entry) => total + entry.hours, 0);
+  const completionRate = totalEntries > 0 ? Math.round((completedEntries / totalEntries) * 100) : 0;
 
   // Filter and sort entries
   const filteredEntries = entries
     .filter(entry => {
       const matchesSearch = entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          entry.description.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesStatus = filterStatus === 'all' || entry.status === filterStatus;
+                          entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          entry.supervisor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          entry.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchesStatus = activeFilter === 'all' || entry.status === activeFilter;
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
@@ -100,6 +144,11 @@ function OJTEntries() {
         return sortOrder === 'asc'
           ? a.title.localeCompare(b.title)
           : b.title.localeCompare(a.title);
+      }
+      if (sortBy === 'hours') {
+        return sortOrder === 'asc'
+          ? a.hours - b.hours
+          : b.hours - a.hours;
       }
       return 0;
     });
@@ -143,7 +192,7 @@ function OJTEntries() {
   const handleView = (entry) => {
     setSelectedEntry(entry);
     // You could open a view-only modal here
-    alert(`Viewing: ${entry.title}\n\nStatus: ${entry.status}\nDate: ${entry.date}\n\n${entry.description}`);
+    alert(`Viewing: ${entry.title}\n\nStatus: ${entry.status}\nDate: ${entry.date}\nHours: ${entry.hours}\nSupervisor: ${entry.supervisor || 'Not specified'}\n\n${entry.description}`);
   };
 
   const resetForm = () => {
@@ -170,53 +219,92 @@ function OJTEntries() {
     return statusOption ? statusOption.icon : <Clock size={14} />;
   };
 
+  const handleQuickFilter = (status) => {
+    setActiveFilter(status);
+  };
+
   return (
     <div className="ojt-entries-container">
       {/* Header */}
       <div className="entries-header">
-        <div>
+        <div className="header-content">
           <h1 className="entries-title">OJT Entries</h1>
-          <p className="entries-subtitle">Track your On-the-Job Training activities and progress</p>
+          <p className="entries-subtitle">Manage and track your On-the-Job Training activities</p>
         </div>
-        {/* REMOVED: The duplicate "Add New Entry" button since it's already in the sidebar */}
       </div>
 
       {/* Stats Cards */}
       <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-header">
-            <Clock size={20} color="#64748b" />
+        <div className="stat-card primary">
+          <div className="stat-icon">
+            <FileText size={24} />
+          </div>
+          <div className="stat-content">
             <h3>Total Entries</h3>
+            <p className="stat-value">{totalEntries}</p>
           </div>
-          <p className="stat-value">{entries.length}</p>
         </div>
-        <div className="stat-card">
-          <div className="stat-header">
-            <CheckCircle size={20} color="#10b981" />
+        
+        <div className="stat-card success">
+          <div className="stat-icon">
+            <CheckCircle size={24} />
+          </div>
+          <div className="stat-content">
             <h3>Completed</h3>
+            <p className="stat-value">{completedEntries}</p>
           </div>
-          <p className="stat-value">
-            {entries.filter(e => e.status === 'completed').length}
-          </p>
         </div>
-        <div className="stat-card">
-          <div className="stat-header">
-            <AlertCircle size={20} color="#3b82f6" />
+        
+        <div className="stat-card info">
+          <div className="stat-icon">
+            <BarChart3 size={24} />
+          </div>
+          <div className="stat-content">
             <h3>In Progress</h3>
+            <p className="stat-value">{inProgressEntries}</p>
           </div>
-          <p className="stat-value">
-            {entries.filter(e => e.status === 'in-progress').length}
-          </p>
         </div>
-        <div className="stat-card">
-          <div className="stat-header">
-            <Calendar size={20} color="#f59e0b" />
+        
+        <div className="stat-card warning">
+          <div className="stat-icon">
+            <TrendingUp size={24} />
+          </div>
+          <div className="stat-content">
             <h3>Total Hours</h3>
+            <p className="stat-value">{totalHours}</p>
           </div>
-          <p className="stat-value">
-            {entries.reduce((total, entry) => total + entry.hours, 0)}
-          </p>
         </div>
+      </div>
+
+      {/* Quick Filter Buttons */}
+      <div className="quick-filters">
+        <button 
+          className={`filter-btn ${activeFilter === 'all' ? 'active' : ''}`}
+          onClick={() => handleQuickFilter('all')}
+        >
+          All Entries ({totalEntries})
+        </button>
+        <button 
+          className={`filter-btn ${activeFilter === 'pending' ? 'active' : ''}`}
+          onClick={() => handleQuickFilter('pending')}
+        >
+          <Clock size={14} />
+          Pending ({entries.filter(e => e.status === 'pending').length})
+        </button>
+        <button 
+          className={`filter-btn ${activeFilter === 'in-progress' ? 'active' : ''}`}
+          onClick={() => handleQuickFilter('in-progress')}
+        >
+          <AlertCircle size={14} />
+          In Progress ({inProgressEntries})
+        </button>
+        <button 
+          className={`filter-btn ${activeFilter === 'completed' ? 'active' : ''}`}
+          onClick={() => handleQuickFilter('completed')}
+        >
+          <CheckCircle size={14} />
+          Completed ({completedEntries})
+        </button>
       </div>
 
       {/* Search and Filter Bar */}
@@ -225,7 +313,7 @@ function OJTEntries() {
           <Search size={18} color="#64748b" />
           <input
             type="text"
-            placeholder="Search entries..."
+            placeholder="Search by title, description, skills, or supervisor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -236,27 +324,13 @@ function OJTEntries() {
           <div className="filter-group">
             <Filter size={16} />
             <select 
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="filter-select"
-            >
-              <option value="all">All Status</option>
-              {statusOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="sort-group">
-            <select 
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="sort-select"
+              className="filter-select"
             >
               <option value="date">Sort by Date</option>
               <option value="title">Sort by Title</option>
+              <option value="hours">Sort by Hours</option>
             </select>
             <button 
               className="sort-order-btn"
@@ -280,13 +354,25 @@ function OJTEntries() {
                 </span>
               </div>
               <div className="entry-actions">
-                <button className="action-btn view-btn" onClick={() => handleView(entry)}>
+                <button 
+                  className="action-btn view-btn" 
+                  onClick={() => handleView(entry)}
+                  title="View details"
+                >
                   <Eye size={16} />
                 </button>
-                <button className="action-btn edit-btn" onClick={() => handleEdit(entry)}>
+                <button 
+                  className="action-btn edit-btn" 
+                  onClick={() => handleEdit(entry)}
+                  title="Edit entry"
+                >
                   <Edit size={16} />
                 </button>
-                <button className="action-btn delete-btn" onClick={() => handleDelete(entry.id)}>
+                <button 
+                  className="action-btn delete-btn" 
+                  onClick={() => handleDelete(entry.id)}
+                  title="Delete entry"
+                >
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -299,11 +385,15 @@ function OJTEntries() {
               <div className="entry-details">
                 <div className="detail-item">
                   <Calendar size={14} />
-                  <span>{new Date(entry.date).toLocaleDateString()}</span>
+                  <span>{new Date(entry.date).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                  })}</span>
                 </div>
                 <div className="detail-item">
                   <Clock size={14} />
-                  <span>{entry.hours} hours</span>
+                  <span>{entry.hours} {entry.hours === 1 ? 'hour' : 'hours'}</span>
                 </div>
                 {entry.supervisor && (
                   <div className="detail-item">
@@ -315,11 +405,16 @@ function OJTEntries() {
               
               {entry.skills && entry.skills.length > 0 && (
                 <div className="skills-container">
-                  {entry.skills.map((skill, index) => (
+                  {entry.skills.slice(0, 3).map((skill, index) => (
                     <span key={index} className="skill-tag">
                       {skill}
                     </span>
                   ))}
+                  {entry.skills.length > 3 && (
+                    <span className="skill-tag more">
+                      +{entry.skills.length - 3} more
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -330,29 +425,53 @@ function OJTEntries() {
       {/* Empty State */}
       {filteredEntries.length === 0 && (
         <div className="empty-state">
-          <FileText size={48} color="#cbd5e1" />
+          <div className="empty-icon">
+            <FileText size={60} color="#cbd5e1" />
+          </div>
           <h3>No entries found</h3>
-          <p>Try adjusting your search or add a new entry</p>
+          <p>{searchTerm || activeFilter !== 'all' ? 'Try adjusting your search or filter' : 'Start tracking your OJT activities by adding your first entry'}</p>
           <button 
-            className="add-entry-btn"
+            className="add-first-entry-btn"
             onClick={() => setIsModalOpen(true)}
           >
-            <PlusCircle size={18} />
+            <Plus size={18} />
             Add Your First Entry
           </button>
         </div>
       )}
 
+      {/* Floating Action Button */}
+      <button 
+        className="fab"
+        onClick={() => {
+          resetForm();
+          setIsModalOpen(true);
+        }}
+        title="Add new OJT entry"
+      >
+        <Plus size={24} />
+      </button>
+
       {/* Modal for Add/Edit */}
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" onClick={() => {
+          setIsModalOpen(false);
+          resetForm();
+        }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{isEditMode ? 'Edit Entry' : 'Add New Entry'}</h2>
-              <button className="close-btn" onClick={() => {
-                setIsModalOpen(false);
-                resetForm();
-              }}>
+              <div>
+                <h2>{isEditMode ? 'Edit OJT Entry' : 'Add New OJT Entry'}</h2>
+                <p className="modal-subtitle">{isEditMode ? 'Update your entry details' : 'Fill in the details of your OJT activity'}</p>
+              </div>
+              <button 
+                className="close-btn" 
+                onClick={() => {
+                  setIsModalOpen(false);
+                  resetForm();
+                }}
+                title="Close"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -364,7 +483,7 @@ function OJTEntries() {
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  placeholder="Enter entry title"
+                  placeholder="What did you work on?"
                   required
                 />
               </div>
@@ -374,7 +493,7 @@ function OJTEntries() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Describe your OJT activity..."
+                  placeholder="Describe your OJT activity, tasks completed, and what you learned..."
                   rows="4"
                   required
                 />
@@ -399,6 +518,7 @@ function OJTEntries() {
                     onChange={(e) => setFormData({...formData, hours: parseInt(e.target.value) || 0})}
                     min="1"
                     max="24"
+                    placeholder="Hours spent"
                     required
                   />
                 </div>
@@ -413,7 +533,10 @@ function OJTEntries() {
                       type="button"
                       className={`status-btn ${formData.status === option.value ? 'active' : ''}`}
                       onClick={() => setFormData({...formData, status: option.value})}
-                      style={{ borderColor: option.color }}
+                      style={{ 
+                        borderColor: option.color,
+                        background: formData.status === option.value ? option.color : 'white'
+                      }}
                     >
                       {option.icon}
                       {option.label}
@@ -423,17 +546,18 @@ function OJTEntries() {
               </div>
               
               <div className="form-group">
-                <label>Supervisor</label>
+                <label>Supervisor (Optional)</label>
                 <input
                   type="text"
                   value={formData.supervisor}
                   onChange={(e) => setFormData({...formData, supervisor: e.target.value})}
-                  placeholder="Supervisor name"
+                  placeholder="Supervisor's name"
                 />
               </div>
               
               <div className="form-group">
                 <label>Skills Developed</label>
+                <p className="skills-hint">Select the skills you developed during this activity</p>
                 <div className="skills-selector">
                   {skillOptions.map(skill => (
                     <button
@@ -448,9 +572,13 @@ function OJTEntries() {
                       }}
                     >
                       {skill}
+                      {formData.skills.includes(skill) && <CheckCircle size={12} />}
                     </button>
                   ))}
                 </div>
+                {formData.skills.length > 0 && (
+                  <p className="selected-count">{formData.skills.length} skill{formData.skills.length !== 1 ? 's' : ''} selected</p>
+                )}
               </div>
               
               <div className="modal-actions">
