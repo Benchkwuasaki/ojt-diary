@@ -138,19 +138,19 @@ function App() {
     setIsMobileMenuOpen(false);
   };
 
+  const handleNavClick = (section) => {
+    setActiveSection(section);
+    if (window.innerWidth <= 768) {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
   const toggleSidebar = () => {
     setIsSidebarCollapsed(!isSidebarCollapsed);
   };
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
-  const handleNavClick = (section) => {
-    setActiveSection(section);
-    if (window.innerWidth <= 768) {
-      setIsMobileMenuOpen(false);
-    }
   };
 
   const renderContent = () => {
@@ -171,7 +171,7 @@ function App() {
         return <div className="coming-soon">Settings - Coming Soon</div>;
       case 'dashboard':
       default:
-        return <Dashboard user={user} entries={entries} />;
+        return <Dashboard user={user} onNavigate={handleNavClick} entries={entries} />;
     }
   };
 

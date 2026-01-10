@@ -1,8 +1,10 @@
-/* src/components/Dashboard.css - NEW FILE */
+/* src/components/Dashboard.css - REVISED RESPONSIVE DESIGN */
 .dashboard-container {
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 /* Welcome Section */
@@ -64,6 +66,7 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  min-width: 0; /* Important for text overflow */
 }
 
 .stat-card:hover {
@@ -98,6 +101,7 @@
   align-items: center;
   justify-content: center;
   background: rgba(var(--color-rgb), 0.1);
+  flex-shrink: 0;
 }
 
 .stat-header h3 {
@@ -107,6 +111,9 @@
   margin: 0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .stat-value {
@@ -126,6 +133,10 @@
   font-weight: 500;
   margin-top: 8px;
   color: var(--change-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .stat-change.positive {
@@ -261,6 +272,10 @@
   transition: all 0.2s ease;
   color: #374151;
   font-weight: 500;
+  text-align: center;
+  border: none;
+  font-family: inherit;
+  width: 100%;
 }
 
 .quick-action-btn:hover {
@@ -321,6 +336,7 @@
 
 .achievement-content {
   flex: 1;
+  min-width: 0;
 }
 
 .achievement-title {
@@ -328,6 +344,9 @@
   font-weight: 500;
   color: #1F2937;
   margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .achievement-date {
@@ -375,6 +394,7 @@
   font-weight: 600;
   color: white;
   font-size: 18px;
+  flex-shrink: 0;
 }
 
 .project-title {
@@ -382,6 +402,9 @@
   font-weight: 600;
   color: #1F2937;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .project-progress {
@@ -397,6 +420,12 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1200px) {
+  .dashboard-container {
+    padding: 16px;
+  }
+}
+
 @media (max-width: 1024px) {
   .dashboard-container {
     padding: 16px;
@@ -409,19 +438,18 @@
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
-}
-
-@media (max-width: 768px) {
+  
   .welcome-card {
-    padding: 24px 20px;
+    padding: 28px 24px;
   }
   
   .welcome-card h1 {
-    font-size: 24px;
+    font-size: 26px;
   }
-  
+}
+
+@media (max-width: 900px) {
   .stats-grid {
-    grid-template-columns: 1fr;
     gap: 16px;
   }
   
@@ -433,27 +461,36 @@
     font-size: 32px;
   }
   
-  .dashboard-card {
-    padding: 20px;
+  .stat-header h3 {
+    font-size: 13px;
   }
   
-  .quick-actions-grid {
-    grid-template-columns: 1fr;
+  .stat-change {
+    font-size: 12px;
   }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 768px) {
   .dashboard-container {
-    padding: 12px;
+    padding: 16px 12px;
   }
   
   .welcome-card {
-    padding: 20px 16px;
+    padding: 24px 20px;
     margin-bottom: 24px;
   }
   
   .welcome-card h1 {
-    font-size: 22px;
+    font-size: 24px;
+  }
+  
+  .welcome-card p {
+    font-size: 15px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
   
   .stat-card {
@@ -461,7 +498,62 @@
   }
   
   .stat-value {
+    font-size: 30px;
+  }
+  
+  .stat-change {
+    font-size: 12px;
+  }
+  
+  .dashboard-card {
+    padding: 20px;
+  }
+  
+  .quick-actions-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .card-header h3 {
+    font-size: 17px;
+  }
+  
+  .achievement-title {
+    font-size: 13px;
+  }
+  
+  .project-title {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 640px) {
+  .welcome-card h1 {
+    font-size: 22px;
+  }
+  
+  .welcome-card p {
+    font-size: 14px;
+  }
+  
+  .stat-card {
+    padding: 16px;
+  }
+  
+  .stat-value {
     font-size: 28px;
+  }
+  
+  .stat-change {
+    font-size: 11px;
+  }
+  
+  .stat-header h3 {
+    font-size: 12px;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
   }
   
   .dashboard-card {
@@ -469,8 +561,120 @@
   }
   
   .card-header {
+    gap: 10px;
+  }
+  
+  .card-header h3 {
+    font-size: 16px;
+  }
+  
+  .quick-actions-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .quick-action-btn {
+    padding: 14px;
+  }
+  
+  .projects-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-container {
+    padding: 12px 10px;
+  }
+  
+  .welcome-card {
+    padding: 20px 16px;
+  }
+  
+  .welcome-card h1 {
+    font-size: 20px;
+  }
+  
+  .welcome-card p {
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+  
+  .stat-card {
+    padding: 14px;
+  }
+  
+  .stat-value {
+    font-size: 26px;
+  }
+  
+  .stat-change {
+    font-size: 10px;
+  }
+  
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .dashboard-card {
+    padding: 16px;
+  }
+  
+  .card-header {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+  
+  .card-header h3 {
+    font-size: 15px;
+  }
+  
+  .achievement-item {
+    padding: 10px;
+  }
+  
+  .achievement-title {
+    font-size: 12px;
+  }
+  
+  .achievement-date {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 360px) {
+  .welcome-card h1 {
+    font-size: 18px;
+  }
+  
+  .stat-value {
+    font-size: 24px;
+  }
+  
+  .stat-change {
+    font-size: 9px;
+  }
+  
+  .stat-change span {
+    max-width: 90px;
+    display: inline-block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .card-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
+  }
+  
+  .quick-action-btn {
+    font-size: 13px;
+  }
+  
+  .quick-action-btn .action-icon {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
   }
 }

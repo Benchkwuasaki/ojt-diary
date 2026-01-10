@@ -1,4 +1,4 @@
-// src/components/Dashboard.jsx - UPDATED MODERN DESIGN
+// src/components/Dashboard.jsx - REVISED WITH NAVIGATION
 import React from 'react';
 import { 
   TrendingUp, 
@@ -12,14 +12,13 @@ import {
   BarChart3,
   PlusCircle,
   ChevronRight,
-  Star,
-  Trophy,
   Zap,
+  Trophy,
   Activity
 } from 'lucide-react';
 import './Dashboard.css';
 
-function Dashboard({ user }) {
+function Dashboard({ user, onNavigate }) {
   const stats = [
     { 
       id: 1, 
@@ -114,17 +113,30 @@ function Dashboard({ user }) {
   ];
 
   const quickActions = [
-    { id: 1, label: 'Add New Entry', icon: <PlusCircle /> },
-    { id: 2, label: 'View Calendar', icon: <Calendar /> },
-    { id: 3, label: 'Generate Report', icon: <FileText /> },
-    { id: 4, label: 'Track Progress', icon: <BarChart3 /> }
+    { id: 1, label: 'Add New Entry', icon: <PlusCircle />, action: 'add-entry' },
+    { id: 2, label: 'View Calendar', icon: <Calendar />, action: 'view-calendar' },
+    { id: 3, label: 'Generate Report', icon: <FileText />, action: 'generate-report' },
+    { id: 4, label: 'Track Progress', icon: <BarChart3 />, action: 'track-progress' }
   ];
+
+  const handleQuickAction = (action) => {
+    if (onNavigate) {
+      if (action === 'add-entry') {
+        onNavigate('ojt-entries');
+      } else if (action === 'view-calendar') {
+        onNavigate('calendar');
+      } else {
+        // For other actions, you could show a message or implement later
+        console.log(`${action} clicked`);
+      }
+    }
+  };
 
   return (
     <div className="dashboard-container">
       {/* Welcome Section */}
       <div className="welcome-card">
-        <h1>Welcome back, {user?.name}! 👋</h1>
+        <h1>Welcome back, {user?.name || 'User'}! 👋</h1>
         <p>Track your OJT progress and manage your training activities efficiently.</p>
         
         <div className="progress-container">
@@ -172,7 +184,11 @@ function Dashboard({ user }) {
           </div>
           <div className="quick-actions-grid">
             {quickActions.map((action) => (
-              <button key={action.id} className="quick-action-btn">
+              <button 
+                key={action.id} 
+                className="quick-action-btn"
+                onClick={() => handleQuickAction(action.action)}
+              >
                 <div className="action-icon">
                   {action.icon}
                 </div>
