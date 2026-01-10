@@ -101,7 +101,7 @@
 .brand-panel {
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   padding: 40px;
-  color: white;
+  color: white !important;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -257,7 +257,7 @@
   font-style: italic;
   letter-spacing: 0.5px;
   transition: all 0.3s ease;
-  color:white;
+  color:white !important;
 }
 
 .switch-prompt {
