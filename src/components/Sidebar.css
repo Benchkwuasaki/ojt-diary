@@ -319,7 +319,7 @@
 /* Toggle Button - HIGHLY VISIBLE VERSION */
 .sidebar-toggle {
   position: absolute;
-  right: -10px; /* Move it further out */
+  right:20px; /* Move it further out */
   top: 50px; /* Position it below the logo */
   width: 40px; /* Much larger */
   height: 40px; /* Much larger */
