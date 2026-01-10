@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - WITH LOGO CENTERING
+// src/components/Sidebar.jsx - WITH LOGO AT BOTTOM WHEN COLLAPSED
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -115,18 +115,6 @@ function Sidebar({
             <div className="logo-container">
               <img src={logo} alt="OJT Diary Logo" />
             </div>
-            
-            {/* Desktop Toggle Button - NOW POSITIONED OUTSIDE */}
-            {!isMobile && (
-              <button 
-                className="sidebar-toggle"
-                onClick={toggleSidebar}
-                title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-                aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-              >
-                {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-              </button>
-            )}
           </div>
           
           {!isCollapsed && user && (
@@ -142,6 +130,18 @@ function Sidebar({
             </div>
           )}
         </div>
+
+        {/* Desktop Toggle Button */}
+        {!isMobile && (
+          <button 
+            className="sidebar-toggle"
+            onClick={toggleSidebar}
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+          </button>
+        )}
 
         {/* Mobile Close Button */}
         {isMobile && (
@@ -202,6 +202,15 @@ function Sidebar({
             </div>
           )}
         </div>
+
+        {/* Bottom Logo Container - Only shown when collapsed */}
+        {isCollapsed && (
+          <div className="bottom-logo-container">
+            <div className="bottom-logo">
+              <img src={logo} alt="OJT Diary Logo" />
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
