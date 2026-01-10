@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - WITH FIXED TOGGLE POSITION
+// src/components/Sidebar.jsx - WITH LOGO CENTERING
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -109,16 +109,6 @@ function Sidebar({
           transition: 'transform 0.3s ease',
         }}
       >
-        {/* Mobile Close Button */}
-        {isMobile && (
-          <button 
-            className="mobile-close-button"
-            onClick={toggleMobileMenu}
-          >
-            <X size={24} />
-          </button>
-        )}
-
         {/* Sidebar Header */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
@@ -126,7 +116,7 @@ function Sidebar({
               <img src={logo} alt="OJT Diary Logo" />
             </div>
             
-            {/* Desktop Toggle Button - NOW INSIDE LOGO CONTAINER */}
+            {/* Desktop Toggle Button - NOW POSITIONED OUTSIDE */}
             {!isMobile && (
               <button 
                 className="sidebar-toggle"
@@ -152,6 +142,16 @@ function Sidebar({
             </div>
           )}
         </div>
+
+        {/* Mobile Close Button */}
+        {isMobile && (
+          <button 
+            className="mobile-close-button"
+            onClick={toggleMobileMenu}
+          >
+            <X size={24} />
+          </button>
+        )}
 
         {/* Navigation Menu */}
         <nav className="sidebar-nav">

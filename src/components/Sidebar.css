@@ -1,4 +1,4 @@
-/* src/components/Sidebar.css - UPDATED WITH VISIBLE TOGGLE */
+/* src/components/Sidebar.css - UPDATED WITH LOGO CENTERING */
 .sidebar-container {
   width: 280px;
   height: 100vh;
@@ -43,10 +43,13 @@
   position: relative;
 }
 
+/* LOGO LAYOUT FIX */
 .sidebar-logo {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  position: relative;
+  width: 100%;
   margin-bottom: 24px;
 }
 
@@ -317,9 +320,12 @@
   letter-spacing: 0.3px;
 }
 
-/* Toggle Button - FIXED POSITIONING */
+/* Toggle Button - CENTERED WITH LOGO */
 .sidebar-toggle {
-  position: relative;
+  position: absolute;
+  right: -20px; /* Position outside the sidebar */
+  top: 50%;
+  transform: translateY(-50%);
   width: 40px;
   height: 40px;
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
@@ -335,21 +341,19 @@
     0 6px 20px rgba(0, 0, 0, 0.5),
     0 0 0 2px rgba(34, 197, 94, 0.3);
   border: none;
-  flex-shrink: 0;
 }
 
 .sidebar-toggle:hover {
-  transform: scale(1.2);
+  transform: translateY(-50%) scale(1.2);
   box-shadow: 
     0 8px 25px rgba(0, 0, 0, 0.6),
     0 0 0 3px rgba(34, 197, 94, 0.5);
   background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
 }
 
-/* Center logo when collapsed */
-.sidebar-container.collapsed .sidebar-logo {
-  justify-content: center;
-  margin-bottom: 0;
+/* Adjust toggle position when collapsed */
+.sidebar-container.collapsed .sidebar-toggle {
+  right: -20px;
 }
 
 /* Add a pulsing animation when sidebar is collapsed */
