@@ -1,8 +1,10 @@
-// src/App.jsx
+// src/App.jsx - UPDATED
 import { useState, useEffect } from 'react';
 import './App.css';
 import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
+import OJTEntries from './components/OJTEntries';
+import Dashboard from './components/Dashboard'; // You'll need to create this
 import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -10,12 +12,11 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState('dashboard');
 
   useEffect(() => {
-    // Listen to auth state changes
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        // User is signed in
         const userData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
@@ -27,7 +28,6 @@ function App() {
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('isAuthenticated', 'true');
       } else {
-        // User is signed out
         setUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('user');
@@ -36,7 +36,6 @@ function App() {
       setLoading(false);
     });
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
   }, []);
 
@@ -48,9 +47,19 @@ function App() {
   const handleLogout = () => {
     setUser(null);
     setIsAuthenticated(false);
+    setActiveSection('dashboard');
   };
 
-  // Show loading state while checking auth
+  const renderContent = () => {
+    switch (activeSection) {
+      case 'ojt-entries':
+        return <OJTEntries />;
+      case 'dashboard':
+      default:
+        return <Dashboard user={user} />;
+    }
+  };
+
   if (loading) {
     return (
       <div style={{
@@ -76,15 +85,14 @@ function App() {
     <div className="App">
       {isAuthenticated ? (
         <>
-          <Sidebar user={user} onLogout={handleLogout} />
+          <Sidebar 
+            user={user} 
+            onLogout={handleLogout} 
+            activeSection={activeSection}
+            setActiveSection={setActiveSection}
+          />
           <div className="main-content">
-            <div className="dashboard-content">
-              <div className="welcome-card">
-                <h1>Welcome back, {user?.name}!</h1>
-                <p>Manage your OJT journey from here.</p>
-              </div>
-              {/* Add your dashboard components here */}
-            </div>
+            {renderContent()}
           </div>
         </>
       ) : (
