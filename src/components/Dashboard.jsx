@@ -7,7 +7,7 @@ function Dashboard({ user }) {
     <div className="dashboard-container">
       <div className="welcome-card">
         <div>
-          <h1>Welcome back, {user?.name}! 👋</h1>
+          <h1>Welcome 🫣 {user?.name}! 👋</h1>
           <p>Track your OJT progress and manage your training activities</p>
         </div>
         <div className="welcome-stats">
