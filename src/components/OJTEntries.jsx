@@ -1,5 +1,4 @@
-// src/components/OJTEntries.jsx
-import React, { useState, useEffect } from 'react';
+// In the import section of OJTEntries.jsx, add User:
 import { 
   PlusCircle, 
   Edit, 
@@ -15,9 +14,9 @@ import {
   Eye,
   X,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  User  // Add this line
 } from 'lucide-react';
-import './OJTEntries.css';
 
 function OJTEntries() {
   const [entries, setEntries] = useState([
