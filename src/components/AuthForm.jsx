@@ -1,11 +1,15 @@
+// src/components/AuthForm.jsx
 import { useState, useEffect } from 'react';
 import './AuthForm.css';
 import { Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Zap, Users } from 'lucide-react';
 import benchlogo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png';
-
-// Your InfinityFree domain
-//  // Replace with your InfinityFree domain
-const API_URL = 'https://corsproxy.io/?https://ojt-diary.42web.io';
+import { auth, db } from '../firebase/config';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword,
+  updateProfile
+} from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 function AuthForm({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,7 +25,6 @@ function AuthForm({ onLogin }) {
     confirmPassword: ''
   });
 
-  // Check if mobile on mount and resize
   useEffect(() => {
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -34,79 +37,99 @@ function AuthForm({ onLogin }) {
   }, []);
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
+    e.preventDefault();
+    setIsLoading(true);
 
-  // Debug: Log what we're sending
-  console.log('Attempting registration with:', {
-    name: formData.name,
-    email: formData.email,
-    passwordLength: formData.password.length,
-    confirmPasswordLength: formData.confirmPassword.length
-  });
-
-  try {
-    const endpoint = isLogin ? '/login.php' : '/register.php';
-    const payload = isLogin
-      ? { email: formData.email, password: formData.password }
-      : { 
-          name: formData.name, 
-          email: formData.email, 
-          password: formData.password,
-          confirmPassword: formData.confirmPassword
+    try {
+      if (isLogin) {
+        // Login with Firebase
+        const userCredential = await signInWithEmailAndPassword(
+          auth, 
+          formData.email, 
+          formData.password
+        );
+        
+        const user = {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          name: userCredential.user.displayName || formData.email.split('@')[0]
         };
 
-    console.log('Sending to:', `${API_URL}${endpoint}`);
-    console.log('Payload:', payload);
-
-    const response = await fetch(`${API_URL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload)
-    });
-
-    console.log('Response status:', response.status);
-    console.log('Response ok:', response.ok);
-
-    // Try to get response text first
-    const responseText = await response.text();
-    console.log('Raw response:', responseText);
-
-    // Try to parse as JSON
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('JSON Parse Error:', parseError);
-      alert('Server returned invalid response: ' + responseText.substring(0, 100));
-      return;
-    }
-
-    if (result.success) {
-      alert(result.message);
-      if (isLogin && result.user) {
-        localStorage.setItem('user', JSON.stringify(result.user));
+        // Save to localStorage
+        localStorage.setItem('user', JSON.stringify(user));
         localStorage.setItem('isAuthenticated', 'true');
+        
+        alert('Login successful!');
         if (onLogin) {
-          onLogin(result.user);
+          onLogin(user);
         }
-      } else if (!isLogin) {
+      } else {
+        // Register with Firebase
+        
+        // Validate passwords match
+        if (formData.password !== formData.confirmPassword) {
+          alert('Passwords do not match!');
+          setIsLoading(false);
+          return;
+        }
+
+        // Create user account
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          formData.email,
+          formData.password
+        );
+
+        // Update profile with display name
+        await updateProfile(userCredential.user, {
+          displayName: formData.name
+        });
+
+        // Save additional user data to Firestore
+        await setDoc(doc(db, 'users', userCredential.user.uid), {
+          name: formData.name,
+          email: formData.email,
+          createdAt: new Date().toISOString(),
+          role: 'student' // default role
+        });
+
+        alert('Registration successful! Please sign in.');
         handleSwitchForm();
       }
-    } else {
-      alert(result.message || 'Something went wrong');
+    } catch (error) {
+      console.error('Auth Error:', error);
+      
+      // User-friendly error messages
+      let errorMessage = 'An error occurred. Please try again.';
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'This email is already registered. Please sign in instead.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Invalid email address.';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Password should be at least 6 characters.';
+          break;
+        case 'auth/user-not-found':
+          errorMessage = 'No account found with this email.';
+          break;
+        case 'auth/wrong-password':
+          errorMessage = 'Incorrect password.';
+          break;
+        case 'auth/too-many-requests':
+          errorMessage = 'Too many failed attempts. Please try again later.';
+          break;
+        default:
+          errorMessage = error.message;
+      }
+      
+      alert(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {
-    console.error('Fetch Error Details:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    alert('Network error: ' + error.message);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const handleChange = (e) => {
     setFormData({

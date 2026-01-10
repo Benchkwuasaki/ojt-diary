@@ -1,3 +1,4 @@
+// src/components/Sidebar.jsx
 import React, { useState } from 'react';
 import { 
   LayoutDashboard, 
@@ -13,6 +14,8 @@ import {
   Bell
 } from 'lucide-react';
 import './Sidebar.css';
+import { auth } from '../firebase/config';
+import { signOut } from 'firebase/auth';
 
 function Sidebar({ user, onLogout }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -29,11 +32,17 @@ function Sidebar({ user, onLogout }) {
     { id: 'settings', label: 'Settings', icon: <Settings size={20} /> },
   ];
 
-  const handleLogout = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('isAuthenticated');
-    if (onLogout) {
-      onLogout();
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem('user');
+      localStorage.removeItem('isAuthenticated');
+      if (onLogout) {
+        onLogout();
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      alert('Error logging out. Please try again.');
     }
   };
 
