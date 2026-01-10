@@ -4,7 +4,7 @@ import './App.css';
 import AuthForm from './components/AuthForm';
 import Sidebar from './components/Sidebar';
 import OJTEntries from './components/OJTEntries';
-import Dashboard from './components/Dashboard'; // You'll need to create this
+import Dashboard from './components/Dashboard';
 import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -13,6 +13,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
@@ -48,12 +50,40 @@ function App() {
     setUser(null);
     setIsAuthenticated(false);
     setActiveSection('dashboard');
+    setIsMobileMenuOpen(false);
+  };
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleNavClick = (section) => {
+    setActiveSection(section);
+    if (window.innerWidth <= 768) {
+      setIsMobileMenuOpen(false);
+    }
   };
 
   const renderContent = () => {
     switch (activeSection) {
       case 'ojt-entries':
         return <OJTEntries />;
+      case 'calendar':
+        return <div className="coming-soon">Calendar - Coming Soon</div>;
+      case 'reports':
+        return <div className="coming-soon">Reports - Coming Soon</div>;
+      case 'progress':
+        return <div className="coming-soon">Progress - Coming Soon</div>;
+      case 'notifications':
+        return <div className="coming-soon">Notifications - Coming Soon</div>;
+      case 'profile':
+        return <div className="coming-soon">Profile - Coming Soon</div>;
+      case 'settings':
+        return <div className="coming-soon">Settings - Coming Soon</div>;
       case 'dashboard':
       default:
         return <Dashboard user={user} />;
@@ -62,20 +92,10 @@ function App() {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        background: 'linear-gradient(135deg, #417bb5 0%, #b0974b 100%)'
-      }}>
-        <div style={{
-          background: 'white',
-          padding: '30px 50px',
-          borderRadius: '16px',
-          boxShadow: '0 10px 30px rgba(0,0,0,0.1)'
-        }}>
-          <h2 style={{ margin: 0, color: '#1e293b' }}>Loading...</h2>
+      <div className="loading-screen">
+        <div className="loading-content">
+          <div className="loading-spinner"></div>
+          <h2>Loading...</h2>
         </div>
       </div>
     );
@@ -89,9 +109,13 @@ function App() {
             user={user} 
             onLogout={handleLogout} 
             activeSection={activeSection}
-            setActiveSection={setActiveSection}
+            setActiveSection={handleNavClick}
+            isCollapsed={isSidebarCollapsed}
+            toggleSidebar={toggleSidebar}
+            isMobileMenuOpen={isMobileMenuOpen}
+            toggleMobileMenu={toggleMobileMenu}
           />
-          <div className="main-content">
+          <div className={`main-content ${isSidebarCollapsed ? 'expanded' : ''}`}>
             {renderContent()}
           </div>
         </>
