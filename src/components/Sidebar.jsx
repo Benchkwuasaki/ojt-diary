@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - WITH VISIBLE TOGGLE
+// src/components/Sidebar.jsx - WITH FIXED TOGGLE POSITION
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -109,18 +109,6 @@ function Sidebar({
           transition: 'transform 0.3s ease',
         }}
       >
-        {/* Desktop Toggle Button - NOW VERY VISIBLE */}
-        {!isMobile && (
-          <button 
-            className="sidebar-toggle"
-            onClick={toggleSidebar}
-            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
-          >
-            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
-          </button>
-        )}
-
         {/* Mobile Close Button */}
         {isMobile && (
           <button 
@@ -135,10 +123,20 @@ function Sidebar({
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <div className="logo-container">
-              {/* Logo Image - Replaced the green OJT text */}
               <img src={logo} alt="OJT Diary Logo" />
             </div>
-            {/* Removed the OJT Diary text */}
+            
+            {/* Desktop Toggle Button - NOW INSIDE LOGO CONTAINER */}
+            {!isMobile && (
+              <button 
+                className="sidebar-toggle"
+                onClick={toggleSidebar}
+                title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              >
+                {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+              </button>
+            )}
           </div>
           
           {!isCollapsed && user && (
@@ -200,7 +198,6 @@ function Sidebar({
           
           {!isCollapsed && (
             <div className="version-info">
-             
               <p className="made-by">@ made by lipang</p>
             </div>
           )}

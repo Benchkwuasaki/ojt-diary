@@ -40,12 +40,13 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(17, 24, 39, 0.8);
   backdrop-filter: blur(10px);
+  position: relative;
 }
 
 .sidebar-logo {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   margin-bottom: 24px;
 }
 
@@ -316,13 +317,11 @@
   letter-spacing: 0.3px;
 }
 
-/* Toggle Button - HIGHLY VISIBLE VERSION */
+/* Toggle Button - FIXED POSITIONING */
 .sidebar-toggle {
-  position: absolute;
-  right:20px; /* Move it further out */
-  top: 50px; /* Position it below the logo */
-  width: 40px; /* Much larger */
-  height: 40px; /* Much larger */
+  position: relative;
+  width: 40px;
+  height: 40px;
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   border-radius: 50%;
   display: flex;
@@ -334,7 +333,9 @@
   transition: all 0.3s ease;
   box-shadow: 
     0 6px 20px rgba(0, 0, 0, 0.5),
-    0 0 0 2px rgba(34, 197, 94, 0.3); /* Double shadow for depth */
+    0 0 0 2px rgba(34, 197, 94, 0.3);
+  border: none;
+  flex-shrink: 0;
 }
 
 .sidebar-toggle:hover {
@@ -343,6 +344,12 @@
     0 8px 25px rgba(0, 0, 0, 0.6),
     0 0 0 3px rgba(34, 197, 94, 0.5);
   background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+}
+
+/* Center logo when collapsed */
+.sidebar-container.collapsed .sidebar-logo {
+  justify-content: center;
+  margin-bottom: 0;
 }
 
 /* Add a pulsing animation when sidebar is collapsed */
