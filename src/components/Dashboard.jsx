@@ -136,7 +136,7 @@ function Dashboard({ user, onNavigate }) {
     <div className="dashboard-container">
       {/* Welcome Section */}
       <div className="welcome-card">
-        <h1>Welcome back, {user?.name || 'User'}! 👋</h1>
+        <h1>Welcome Mothershit, {user?.name || 'User'}! 👋</h1>
         <p>Track your OJT progress and manage your training activities efficiently.</p>
         
         <div className="progress-container">

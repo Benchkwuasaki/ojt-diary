@@ -1,4 +1,4 @@
-/* src/components/Sidebar.css - UPDATED WITH LOGO */
+/* src/components/Sidebar.css - UPDATED WITH VISIBLE TOGGLE */
 .sidebar-container {
   width: 280px;
   height: 100vh;
@@ -50,8 +50,8 @@
 }
 
 .logo-container {
-  width: 70px;
-  height: 70px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -316,15 +316,15 @@
   letter-spacing: 0.3px;
 }
 
-/* Toggle Button - MADE MORE VISIBLE */
+/* Toggle Button - HIGHLY VISIBLE VERSION */
 .sidebar-toggle {
   position: absolute;
-  right: -16px;
-  top: 32px;
-  width: 32px;
-  height: 32px;
+  right: -20px; /* Move it further out */
+  top: 50px; /* Position it below the logo */
+  width: 40px; /* Much larger */
+  height: 40px; /* Much larger */
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  border: 2px solid #111827;
+  border: 3px solid #ffffff; /* White border for contrast */
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -333,12 +333,40 @@
   color: white;
   z-index: 1001;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    0 0 0 2px rgba(34, 197, 94, 0.3); /* Double shadow for depth */
 }
 
 .sidebar-toggle:hover {
-  transform: scale(1.15);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  transform: scale(1.2);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.6),
+    0 0 0 3px rgba(34, 197, 94, 0.5);
+  background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+}
+
+/* Add a pulsing animation when sidebar is collapsed */
+.sidebar-container.collapsed .sidebar-toggle {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 
+      0 6px 20px rgba(0, 0, 0, 0.5),
+      0 0 0 2px rgba(34, 197, 94, 0.3);
+  }
+  50% {
+    box-shadow: 
+      0 6px 20px rgba(0, 0, 0, 0.5),
+      0 0 0 4px rgba(34, 197, 94, 0.5);
+  }
+  100% {
+    box-shadow: 
+      0 6px 20px rgba(0, 0, 0, 0.5),
+      0 0 0 2px rgba(34, 197, 94, 0.3);
+  }
 }
 
 /* Mobile Styles */

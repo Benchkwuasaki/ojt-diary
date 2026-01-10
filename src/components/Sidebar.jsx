@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - UPDATED WITH LOGO
+// src/components/Sidebar.jsx - WITH VISIBLE TOGGLE
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -109,13 +109,15 @@ function Sidebar({
           transition: 'transform 0.3s ease',
         }}
       >
-        {/* Desktop Toggle Button - NOW MORE VISIBLE */}
+        {/* Desktop Toggle Button - NOW VERY VISIBLE */}
         {!isMobile && (
           <button 
             className="sidebar-toggle"
             onClick={toggleSidebar}
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
-            {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+            {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
           </button>
         )}
 
@@ -186,8 +188,6 @@ function Sidebar({
           </ul>
         </nav>
 
-        {/* REMOVED: Quick Actions section with the green button */}
-
         {/* Logout Section */}
         <div className="sidebar-footer">
           <button 
@@ -200,7 +200,7 @@ function Sidebar({
           
           {!isCollapsed && (
             <div className="version-info">
-              <p>v1.0.0</p>
+             
               <p className="made-by">@ made by lipang</p>
             </div>
           )}
