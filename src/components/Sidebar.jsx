@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - UPDATED
+// src/components/Sidebar.jsx - UPDATED (removed the green button)
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -13,8 +13,7 @@ import {
   BarChart3,
   Bell,
   ChevronLeft,
-  ChevronRight,
-  PlusCircle
+  ChevronRight
 } from 'lucide-react';
 import './Sidebar.css';
 import { auth } from '../firebase/config';
@@ -185,18 +184,8 @@ function Sidebar({
           </ul>
         </nav>
 
-        {/* Quick Actions */}
-        {!isCollapsed && (
-          <div className="quick-actions">
-            <button 
-              className="add-entry-btn"
-              onClick={() => handleNavClick('ojt-entries')}
-            >
-              <PlusCircle size={18} />
-              New OJT Entry
-            </button>
-          </div>
-        )}
+        {/* REMOVED: Quick Actions section with the green button */}
+        {/* The green "New OJT Entry" button has been removed */}
 
         {/* Logout Section */}
         <div className="sidebar-footer">
