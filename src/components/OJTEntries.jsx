@@ -1,5 +1,5 @@
 // src/components/OJTEntries.jsx - REVISED COMPLETE CODE
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Edit, 
@@ -21,8 +21,9 @@ import {
 } from 'lucide-react';
 import './OJTEntries.css';
 
-function OJTEntries() {
-  const [entries, setEntries] = useState([
+function OJTEntries({ entries: propEntries, setEntries: propSetEntries }) {
+  // Use local state if props not provided (for standalone use)
+  const [localEntries, setLocalEntries] = useState([
     {
       id: 1,
       title: 'Orientation & Company Tour',
@@ -85,14 +86,19 @@ function OJTEntries() {
     }
   ]);
 
+  // Use props if provided, otherwise use local state
+  const entries = propEntries || localEntries;
+  const setEntries = propSetEntries || setLocalEntries;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
   const [activeFilter, setActiveFilter] = useState('all');
+  const [skillInput, setSkillInput] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -104,6 +110,8 @@ function OJTEntries() {
     skills: []
   });
 
+  const suggestionsRef = useRef(null);
+
   const statusOptions = [
     { value: 'pending', label: 'Pending', color: '#f59e0b', icon: <Clock size={14} /> },
     { value: 'in-progress', label: 'In Progress', color: '#3b82f6', icon: <AlertCircle size={14} /> },
@@ -114,8 +122,21 @@ function OJTEntries() {
     'Communication', 'Teamwork', 'Problem Solving', 'React.js', 'JavaScript', 
     'CSS', 'HTML', 'Git', 'Testing', 'Documentation', 'Safety', 'Time Management',
     'Company Culture', 'Presentation', 'Agile', 'SQL', 'Performance', 'Database',
-    'Code Review', 'Best Practices', 'Quality Assurance'
+    'Code Review', 'Best Practices', 'Quality Assurance', 'Leadership',
+    'Project Management', 'Data Analysis', 'UI/UX Design', 'API Development'
   ];
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Stats calculation
   const totalEntries = entries.length;
@@ -205,6 +226,8 @@ function OJTEntries() {
       supervisor: '',
       skills: []
     });
+    setSkillInput('');
+    setShowSuggestions(false);
     setSelectedEntry(null);
     setIsEditMode(false);
   };
@@ -221,6 +244,27 @@ function OJTEntries() {
 
   const handleQuickFilter = (status) => {
     setActiveFilter(status);
+  };
+
+  // Add skill function
+  const addSkill = (skill) => {
+    const trimmedSkill = skill.trim();
+    if (trimmedSkill && !formData.skills.includes(trimmedSkill)) {
+      setFormData({
+        ...formData,
+        skills: [...formData.skills, trimmedSkill]
+      });
+    }
+    setSkillInput('');
+    setShowSuggestions(false);
+  };
+
+  // Remove skill function
+  const removeSkill = (skill) => {
+    setFormData({
+      ...formData,
+      skills: formData.skills.filter(s => s !== skill)
+    });
   };
 
   return (
@@ -557,7 +601,78 @@ function OJTEntries() {
               
               <div className="form-group">
                 <label>Skills Developed</label>
-                <p className="skills-hint">Select the skills you developed during this activity</p>
+                <p className="skills-hint">Type a skill and press Enter, or select from suggestions</p>
+                
+                {/* Selected Skills Display */}
+                <div className="selected-skills-display">
+                  {formData.skills.map((skill, index) => (
+                    <span key={index} className="selected-skill-tag">
+                      {skill}
+                      <button 
+                        type="button"
+                        className="remove-skill-btn"
+                        onClick={() => removeSkill(skill)}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                
+                {/* Skills Input with Autocomplete */}
+                <div className="skills-input-wrapper" ref={suggestionsRef}>
+                  <input
+                    type="text"
+                    value={skillInput}
+                    onChange={(e) => {
+                      setSkillInput(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && skillInput.trim()) {
+                        e.preventDefault();
+                        addSkill(skillInput);
+                      }
+                    }}
+                    onFocus={() => setShowSuggestions(true)}
+                    placeholder="Type a skill and press Enter"
+                    className="skills-input"
+                  />
+                  
+                  {/* Skill Suggestions */}
+                  {showSuggestions && skillInput && (
+                    <div className="skills-suggestions">
+                      {skillOptions
+                        .filter(skill => 
+                          skill.toLowerCase().includes(skillInput.toLowerCase()) &&
+                          !formData.skills.includes(skill)
+                        )
+                        .slice(0, 5)
+                        .map((skill, index) => (
+                          <div
+                            key={index}
+                            className="suggestion-item"
+                            onClick={() => addSkill(skill)}
+                          >
+                            {skill}
+                          </div>
+                        ))
+                      }
+                      {skillInput.trim() && !skillOptions.includes(skillInput.trim()) && (
+                        <div
+                          className="suggestion-item add-new"
+                          onClick={() => addSkill(skillInput)}
+                        >
+                          <Plus size={12} />
+                          Add "{skillInput.trim()}"
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Predefined Skill Buttons */}
+                <p className="skills-hint">Or select from common skills:</p>
                 <div className="skills-selector">
                   {skillOptions.map(skill => (
                     <button
@@ -576,8 +691,11 @@ function OJTEntries() {
                     </button>
                   ))}
                 </div>
+                
                 {formData.skills.length > 0 && (
-                  <p className="selected-count">{formData.skills.length} skill{formData.skills.length !== 1 ? 's' : ''} selected</p>
+                  <p className="selected-count">
+                    {formData.skills.length} skill{formData.skills.length !== 1 ? 's' : ''} selected
+                  </p>
                 )}
               </div>
               

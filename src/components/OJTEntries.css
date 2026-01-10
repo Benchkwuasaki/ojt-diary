@@ -657,6 +657,109 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Skills Input Styles - NEW */
+.selected-skills-display {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  min-height: 40px;
+}
+
+.selected-skill-tag {
+  background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.remove-skill-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.remove-skill-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
+.skills-input-wrapper {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.skills-input {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 15px;
+  background: #f8fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  color: #1e293b;
+  font-family: inherit;
+}
+
+.skills-input:focus {
+  outline: none;
+  background: white;
+  border-color: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.skills-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-top: 4px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.suggestion-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover {
+  background: #f8fafc;
+}
+
+.suggestion-item.add-new {
+  color: #22c55e;
+  font-weight: 500;
+}
+
 .skills-hint {
   color: #64748b;
   font-size: 13px;
@@ -854,21 +957,25 @@
   }
 }
 
-/* Scrollbar styling for skills selector */
-.skills-selector::-webkit-scrollbar {
+/* Scrollbar styling */
+.skills-selector::-webkit-scrollbar,
+.skills-suggestions::-webkit-scrollbar {
   width: 6px;
 }
 
-.skills-selector::-webkit-scrollbar-track {
+.skills-selector::-webkit-scrollbar-track,
+.skills-suggestions::-webkit-scrollbar-track {
   background: #f1f5f9;
   border-radius: 10px;
 }
 
-.skills-selector::-webkit-scrollbar-thumb {
+.skills-selector::-webkit-scrollbar-thumb,
+.skills-suggestions::-webkit-scrollbar-thumb {
   background: #cbd5e1;
   border-radius: 10px;
 }
 
-.skills-selector::-webkit-scrollbar-thumb:hover {
+.skills-selector::-webkit-scrollbar-thumb:hover,
+.skills-suggestions::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
