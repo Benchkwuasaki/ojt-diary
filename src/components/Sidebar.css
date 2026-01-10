@@ -319,12 +319,11 @@
 /* Toggle Button - HIGHLY VISIBLE VERSION */
 .sidebar-toggle {
   position: absolute;
-  right: -20px; /* Move it further out */
+  right: -10px; /* Move it further out */
   top: 50px; /* Position it below the logo */
   width: 40px; /* Much larger */
   height: 40px; /* Much larger */
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  border: 3px solid #ffffff; /* White border for contrast */
   border-radius: 50%;
   display: flex;
   align-items: center;
