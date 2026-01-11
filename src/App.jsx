@@ -1,4 +1,4 @@
-// src/App.jsx - FIXED AUTH STATE DURING REGISTRATION
+// src/App.jsx - UPDATED TO REMOVE STATIC ENTRIES
 import { useState, useEffect } from 'react';
 import './App.css';
 import AuthForm from './components/AuthForm';
@@ -17,90 +17,6 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Moved entries state to App.jsx to share between components
-  const [entries, setEntries] = useState([
-    {
-      id: 1,
-      title: 'Orientation & Company Tour',
-      description: 'Introduction to company culture and workplace safety procedures. Learned about company values and workplace ethics.',
-      date: '2024-01-10',
-      status: 'completed',
-      hours: 8,
-      supervisor: 'John Smith',
-      skills: ['Communication', 'Safety', 'Company Culture']
-    },
-    {
-      id: 2,
-      title: 'Software Development Training',
-      description: 'Learning React.js and modern web development practices. Built a sample dashboard application.',
-      date: '2024-01-12',
-      status: 'in-progress',
-      hours: 6,
-      supervisor: 'Sarah Johnson',
-      skills: ['React.js', 'JavaScript', 'CSS', 'Git']
-    },
-    {
-      id: 3,
-      title: 'Team Project Collaboration',
-      description: 'Working with team on new feature implementation. Participated in daily standups and code reviews.',
-      date: '2024-01-15',
-      status: 'pending',
-      hours: 4,
-      supervisor: 'Mike Chen',
-      skills: ['Teamwork', 'Problem Solving', 'Agile']
-    },
-    {
-      id: 4,
-      title: 'Client Meeting Preparation',
-      description: 'Prepared documentation and presentation for upcoming client meeting. Assisted in creating project timelines.',
-      date: '2024-01-18',
-      status: 'completed',
-      hours: 5,
-      supervisor: 'Emma Wilson',
-      skills: ['Documentation', 'Presentation', 'Time Management']
-    },
-    {
-      id: 5,
-      title: 'Database Optimization',
-      description: 'Worked on optimizing database queries and improving application performance.',
-      date: '2024-01-20',
-      status: 'in-progress',
-      hours: 7,
-      supervisor: 'David Lee',
-      skills: ['SQL', 'Performance', 'Database']
-    },
-    {
-      id: 6,
-      title: 'Code Review Session',
-      description: 'Participated in peer code review sessions and learned best practices for code quality.',
-      date: '2024-01-22',
-      status: 'completed',
-      hours: 3,
-      supervisor: 'Sarah Johnson',
-      skills: ['Code Review', 'Best Practices', 'Quality Assurance']
-    },
-    {
-      id: 7,
-      title: 'Team Building Activity',
-      description: 'Participated in team building exercises to improve collaboration and communication.',
-      date: '2024-02-01',
-      status: 'completed',
-      hours: 4,
-      supervisor: 'Lisa Wong',
-      skills: ['Teamwork', 'Communication', 'Leadership']
-    },
-    {
-      id: 8,
-      title: 'Project Presentation',
-      description: 'Presented final project to management team and received feedback.',
-      date: '2024-02-05',
-      status: 'pending',
-      hours: 3,
-      supervisor: 'Robert Kim',
-      skills: ['Presentation', 'Public Speaking', 'Feedback']
-    }
-  ]);
-
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       // Check if we're currently registering a new user
@@ -161,9 +77,9 @@ function App() {
   const renderContent = () => {
     switch (activeSection) {
       case 'ojt-entries':
-        return <OJTEntries entries={entries} setEntries={setEntries} />;
+        return <OJTEntries />;
       case 'calendar':
-        return <Calendar entries={entries} />;
+        return <Calendar />;
       case 'reports':
         return <div className="coming-soon">Reports - Coming Soon</div>;
       case 'progress':
@@ -176,7 +92,7 @@ function App() {
         return <div className="coming-soon">Settings - Coming Soon</div>;
       case 'dashboard':
       default:
-        return <Dashboard user={user} onNavigate={handleNavClick} entries={entries} />;
+        return <Dashboard user={user} onNavigate={handleNavClick} />;
     }
   };
 

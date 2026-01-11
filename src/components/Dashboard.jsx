@@ -1,5 +1,5 @@
-// src/components/Dashboard.jsx - REVISED WITH NAVIGATION
-import React from 'react';
+// src/components/Dashboard.jsx - UPDATED WITH FIRESTORE INTEGRATION
+import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
   Users, 
@@ -16,39 +16,79 @@ import {
   Trophy,
   Activity
 } from 'lucide-react';
+import { db, auth } from '../firebase/config';
+import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import './Dashboard.css';
 
 function Dashboard({ user, onNavigate }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch user's entries from Firestore
+  useEffect(() => {
+    const fetchEntries = async () => {
+      if (!user) return;
+      
+      try {
+        const entriesRef = collection(db, 'ojtEntries');
+        const q = query(entriesRef, where('userId', '==', user.uid));
+        
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const entriesData = [];
+          querySnapshot.forEach((doc) => {
+            entriesData.push(doc.data());
+          });
+          setEntries(entriesData);
+          setLoading(false);
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.error('Error fetching entries:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchEntries();
+  }, [user]);
+
+  // Calculate stats from user's entries
+  const totalEntries = entries.length;
+  const completedEntries = entries.filter(e => e.status === 'completed').length;
+  const inProgressEntries = entries.filter(e => e.status === 'in-progress').length;
+  const totalHours = entries.reduce((total, entry) => total + entry.hours, 0);
+  const completionRate = totalEntries > 0 ? Math.round((completedEntries / totalEntries) * 100) : 0;
+
   const stats = [
     { 
       id: 1, 
       title: 'Completion Rate', 
-      value: '85%', 
-      change: '+5%', 
+      value: `${completionRate}%`, 
+      change: completionRate >= 85 ? '+5%' : '0%', 
       icon: <TrendingUp size={24} />,
       color: '#22c55e'
     },
     { 
       id: 2, 
-      title: 'Active Projects', 
-      value: '3', 
-      change: '+1', 
+      title: 'Active Tasks', 
+      value: `${inProgressEntries}`, 
+      change: inProgressEntries > 0 ? `+${inProgressEntries}` : '0', 
       icon: <Users size={24} />,
       color: '#3b82f6'
     },
     { 
       id: 3, 
       title: 'Total Hours', 
-      value: '256', 
-      change: '+48', 
+      value: `${totalHours}`, 
+      change: totalHours > 0 ? `+${totalHours}` : '0', 
       icon: <Clock size={24} />,
       color: '#f59e0b'
     },
     { 
       id: 4, 
       title: 'Tasks Completed', 
-      value: '42', 
-      change: '+8', 
+      value: `${completedEntries}`, 
+      change: completedEntries > 0 ? `+${completedEntries}` : '0', 
       icon: <CheckCircle size={24} />,
       color: '#10b981'
     }
@@ -57,58 +97,24 @@ function Dashboard({ user, onNavigate }) {
   const achievements = [
     { 
       id: 1, 
-      title: 'Fast Learner Badge', 
-      date: 'Jan 15, 2024',
+      title: 'Getting Started', 
+      date: 'First entry added',
       icon: <Zap size={20} />,
       color: '#f59e0b'
     },
     { 
       id: 2, 
-      title: 'Team Collaboration Award', 
-      date: 'Jan 10, 2024',
+      title: 'Consistency Badge', 
+      date: 'Multiple entries logged',
       icon: <Users size={20} />,
       color: '#3b82f6'
     },
     { 
       id: 3, 
-      title: 'Perfect Attendance', 
-      date: 'Jan 8, 2024',
+      title: 'Progress Maker', 
+      date: 'Tasks completed',
       icon: <Calendar size={20} />,
       color: '#10b981'
-    },
-    { 
-      id: 4, 
-      title: 'Exceeded Weekly Goals', 
-      date: 'Jan 5, 2024',
-      icon: <Trophy size={20} />,
-      color: '#8b5cf6'
-    }
-  ];
-
-  const projects = [
-    { 
-      id: 1, 
-      title: 'Company Portal Redesign', 
-      progress: 75,
-      team: 4,
-      icon: 'P',
-      color: '#3b82f6'
-    },
-    { 
-      id: 2, 
-      title: 'Mobile App Development', 
-      progress: 90,
-      team: 3,
-      icon: 'M',
-      color: '#8b5cf6'
-    },
-    { 
-      id: 3, 
-      title: 'Database Migration', 
-      progress: 60,
-      team: 2,
-      icon: 'D',
-      color: '#f59e0b'
     }
   ];
 
@@ -132,19 +138,30 @@ function Dashboard({ user, onNavigate }) {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-content">
+          <div className="loading-spinner"></div>
+          <h2>Loading dashboard...</h2>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard-container">
       {/* Welcome Section */}
       <div className="welcome-card">
-        <h1>Welcome Mothershit, {user?.name || 'User'}! 👋</h1>
+        <h1>Welcome back, {user?.name || 'User'}! 👋</h1>
         <p>Track your OJT progress and manage your training activities efficiently.</p>
         
         <div className="progress-container">
           <div className="progress-text">
             <span>Overall Progress</span>
-            <span className="progress-percentage">85%</span>
+            <span className="progress-percentage">{completionRate}%</span>
           </div>
-          <div className="progress-bar" style={{ width: '85%' }}></div>
+          <div className="progress-bar" style={{ width: `${completionRate}%` }}></div>
         </div>
       </div>
 
@@ -227,46 +244,76 @@ function Dashboard({ user, onNavigate }) {
         </div>
       </div>
 
-      {/* Active Projects */}
+      {/* Recent Entries */}
       <div className="dashboard-card">
         <div className="card-header">
           <Activity size={24} color="#3b82f6" />
-          <h3>Active Projects</h3>
+          <h3>Recent OJT Entries</h3>
         </div>
-        <div className="projects-grid">
-          {projects.map((project) => (
-            <div key={project.id} className="project-card">
-              <div className="project-header">
+        {entries.length > 0 ? (
+          <div className="achievements-list">
+            {entries.slice(0, 3).map((entry, index) => (
+              <div key={index} className="achievement-item">
                 <div 
-                  className="project-icon" 
-                  style={{ background: project.color }}
-                >
-                  {project.icon}
-                </div>
-                <h4 className="project-title">{project.title}</h4>
-              </div>
-              
-              <div className="project-progress">
-                <div className="progress-text">
-                  <span>Progress</span>
-                  <span>{project.progress}%</span>
-                </div>
-                <div 
-                  className="progress-bar" 
+                  className="achievement-icon" 
                   style={{ 
-                    width: `${project.progress}%`,
-                    background: `linear-gradient(90deg, ${project.color} 0%, ${project.color}80 100%)`
+                    background: entry.status === 'completed' ? '#10b98120' : 
+                               entry.status === 'in-progress' ? '#3b82f620' : '#f59e0b20',
+                    color: entry.status === 'completed' ? '#10b981' : 
+                          entry.status === 'in-progress' ? '#3b82f6' : '#f59e0b'
                   }}
-                ></div>
+                >
+                  <FileText size={20} />
+                </div>
+                <div className="achievement-content">
+                  <h4 className="achievement-title">{entry.title}</h4>
+                  <p className="achievement-date">
+                    {new Date(entry.date).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    })} • {entry.hours} hours
+                  </p>
+                </div>
+                <div 
+                  className="status-badge"
+                  style={{ 
+                    background: entry.status === 'completed' ? '#10b981' : 
+                               entry.status === 'in-progress' ? '#3b82f6' : '#f59e0b',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {entry.status === 'completed' ? 'Completed' : 
+                   entry.status === 'in-progress' ? 'In Progress' : 'Pending'}
+                </div>
               </div>
-              
-              <div className="project-meta">
-                <span>Team: {project.team} members</span>
-                <span>{project.progress < 100 ? 'In Progress' : 'Completed'}</span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+            {entries.length > 3 && (
+              <button 
+                className="quick-action-btn"
+                onClick={() => onNavigate('ojt-entries')}
+                style={{ marginTop: '16px', width: '100%' }}
+              >
+                View All Entries ({entries.length})
+              </button>
+            )}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '20px' }}>
+            <p style={{ color: '#6B7280', marginBottom: '16px' }}>No entries yet. Start tracking your OJT activities!</p>
+            <button 
+              className="quick-action-btn"
+              onClick={() => onNavigate('ojt-entries')}
+            >
+              <PlusCircle size={20} />
+              Add Your First Entry
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Upcoming Tasks */}
@@ -281,8 +328,8 @@ function Dashboard({ user, onNavigate }) {
               <Clock size={20} />
             </div>
             <div className="achievement-content">
-              <h4 className="achievement-title">Project Review Meeting</h4>
-              <p className="achievement-date">Tomorrow, 10:00 AM</p>
+              <h4 className="achievement-title">Track Your OJT Hours</h4>
+              <p className="achievement-date">Log your daily activities</p>
             </div>
           </div>
           <div className="achievement-item">
@@ -290,8 +337,8 @@ function Dashboard({ user, onNavigate }) {
               <FileText size={20} />
             </div>
             <div className="achievement-content">
-              <h4 className="achievement-title">Submit Weekly Report</h4>
-              <p className="achievement-date">Jan 18, 2024</p>
+              <h4 className="achievement-title">Update Your Progress</h4>
+              <p className="achievement-date">Mark completed tasks</p>
             </div>
           </div>
           <div className="achievement-item">
@@ -299,8 +346,8 @@ function Dashboard({ user, onNavigate }) {
               <Target size={20} />
             </div>
             <div className="achievement-content">
-              <h4 className="achievement-title">Training Session</h4>
-              <p className="achievement-date">Jan 19, 2024</p>
+              <h4 className="achievement-title">Set Weekly Goals</h4>
+              <p className="achievement-date">Plan your learning objectives</p>
             </div>
           </div>
         </div>

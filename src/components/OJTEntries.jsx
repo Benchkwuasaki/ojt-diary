@@ -1,4 +1,4 @@
-// src/components/OJTEntries.jsx - REVISED COMPLETE CODE
+// src/components/OJTEntries.jsx - UPDATED WITH FIRESTORE
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
@@ -19,77 +19,23 @@ import {
   BarChart3,
   TrendingUp
 } from 'lucide-react';
+import { db, auth } from '../firebase/config';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where, 
+  getDocs,
+  onSnapshot,
+  orderBy
+} from 'firebase/firestore';
 import './OJTEntries.css';
 
-function OJTEntries({ entries: propEntries, setEntries: propSetEntries }) {
-  // Use local state if props not provided (for standalone use)
-  const [localEntries, setLocalEntries] = useState([
-    {
-      id: 1,
-      title: 'Orientation & Company Tour',
-      description: 'Introduction to company culture and workplace safety procedures. Learned about company values and workplace ethics.',
-      date: '2024-01-10',
-      status: 'completed',
-      hours: 8,
-      supervisor: 'John Smith',
-      skills: ['Communication', 'Safety', 'Company Culture']
-    },
-    {
-      id: 2,
-      title: 'Software Development Training',
-      description: 'Learning React.js and modern web development practices. Built a sample dashboard application.',
-      date: '2024-01-12',
-      status: 'in-progress',
-      hours: 6,
-      supervisor: 'Sarah Johnson',
-      skills: ['React.js', 'JavaScript', 'CSS', 'Git']
-    },
-    {
-      id: 3,
-      title: 'Team Project Collaboration',
-      description: 'Working with team on new feature implementation. Participated in daily standups and code reviews.',
-      date: '2024-01-15',
-      status: 'pending',
-      hours: 4,
-      supervisor: 'Mike Chen',
-      skills: ['Teamwork', 'Problem Solving', 'Agile']
-    },
-    {
-      id: 4,
-      title: 'Client Meeting Preparation',
-      description: 'Prepared documentation and presentation for upcoming client meeting. Assisted in creating project timelines.',
-      date: '2024-01-18',
-      status: 'completed',
-      hours: 5,
-      supervisor: 'Emma Wilson',
-      skills: ['Documentation', 'Presentation', 'Time Management']
-    },
-    {
-      id: 5,
-      title: 'Database Optimization',
-      description: 'Worked on optimizing database queries and improving application performance.',
-      date: '2024-01-20',
-      status: 'in-progress',
-      hours: 7,
-      supervisor: 'David Lee',
-      skills: ['SQL', 'Performance', 'Database']
-    },
-    {
-      id: 6,
-      title: 'Code Review Session',
-      description: 'Participated in peer code review sessions and learned best practices for code quality.',
-      date: '2024-01-22',
-      status: 'completed',
-      hours: 3,
-      supervisor: 'Sarah Johnson',
-      skills: ['Code Review', 'Best Practices', 'Quality Assurance']
-    }
-  ]);
-
-  // Use props if provided, otherwise use local state
-  const entries = propEntries || localEntries;
-  const setEntries = propSetEntries || setLocalEntries;
-
+function OJTEntries() {
+  const [entries, setEntries] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,6 +45,8 @@ function OJTEntries({ entries: propEntries, setEntries: propSetEntries }) {
   const [activeFilter, setActiveFilter] = useState('all');
   const [skillInput, setSkillInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -126,6 +74,22 @@ function OJTEntries({ entries: propEntries, setEntries: propSetEntries }) {
     'Project Management', 'Data Analysis', 'UI/UX Design', 'API Development'
   ];
 
+  // Get current user and fetch their entries
+  useEffect(() => {
+    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        fetchEntries(currentUser.uid);
+      } else {
+        setUser(null);
+        setEntries([]);
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribeAuth();
+  }, []);
+
   // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -137,6 +101,35 @@ function OJTEntries({ entries: propEntries, setEntries: propSetEntries }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Fetch entries from Firestore
+  const fetchEntries = async (userId) => {
+    try {
+      const entriesRef = collection(db, 'ojtEntries');
+      const q = query(
+        entriesRef, 
+        where('userId', '==', userId),
+        orderBy('date', 'desc')
+      );
+      
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const entriesData = [];
+        querySnapshot.forEach((doc) => {
+          entriesData.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        setEntries(entriesData);
+        setLoading(false);
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error fetching entries:', error);
+      setLoading(false);
+    }
+  };
 
   // Stats calculation
   const totalEntries = entries.length;
@@ -150,7 +143,7 @@ function OJTEntries({ entries: propEntries, setEntries: propSetEntries }) {
     .filter(entry => {
       const matchesSearch = entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          entry.supervisor.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (entry.supervisor && entry.supervisor.toLowerCase().includes(searchTerm.toLowerCase())) ||
                           entry.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesStatus = activeFilter === 'all' || entry.status === activeFilter;
       return matchesSearch && matchesStatus;
@@ -174,45 +167,105 @@ function OJTEntries({ entries: propEntries, setEntries: propSetEntries }) {
       return 0;
     });
 
-  const handleSubmit = (e) => {
+  // Add new entry to Firestore
+  const addEntry = async (entryData) => {
+    try {
+      if (!user) {
+        alert('You must be logged in to add entries');
+        return;
+      }
+
+      const entryWithUser = {
+        ...entryData,
+        userId: user.uid,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await addDoc(collection(db, 'ojtEntries'), entryWithUser);
+      return true;
+    } catch (error) {
+      console.error('Error adding entry:', error);
+      alert('Error adding entry: ' + error.message);
+      return false;
+    }
+  };
+
+  // Update entry in Firestore
+  const updateEntry = async (entryId, entryData) => {
+    try {
+      const entryRef = doc(db, 'ojtEntries', entryId);
+      await updateDoc(entryRef, {
+        ...entryData,
+        updatedAt: new Date().toISOString()
+      });
+      return true;
+    } catch (error) {
+      console.error('Error updating entry:', error);
+      alert('Error updating entry: ' + error.message);
+      return false;
+    }
+  };
+
+  // Delete entry from Firestore
+  const deleteEntry = async (entryId) => {
+    try {
+      await deleteDoc(doc(db, 'ojtEntries', entryId));
+      return true;
+    } catch (error) {
+      console.error('Error deleting entry:', error);
+      alert('Error deleting entry: ' + error.message);
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!user) {
+      alert('You must be logged in to save entries');
+      return;
+    }
+
+    let success = false;
     
     if (isEditMode && selectedEntry) {
       // Update existing entry
-      setEntries(entries.map(entry => 
-        entry.id === selectedEntry.id 
-          ? { ...formData, id: selectedEntry.id }
-          : entry
-      ));
+      success = await updateEntry(selectedEntry.id, formData);
     } else {
       // Add new entry
-      const newEntry = {
-        ...formData,
-        id: entries.length > 0 ? Math.max(...entries.map(e => e.id)) + 1 : 1
-      };
-      setEntries([...entries, newEntry]);
+      success = await addEntry(formData);
     }
     
-    resetForm();
-    setIsModalOpen(false);
+    if (success) {
+      resetForm();
+      setIsModalOpen(false);
+    }
   };
 
   const handleEdit = (entry) => {
     setSelectedEntry(entry);
-    setFormData(entry);
+    setFormData({
+      title: entry.title || '',
+      description: entry.description || '',
+      date: entry.date || new Date().toISOString().split('T')[0],
+      status: entry.status || 'pending',
+      hours: entry.hours || 4,
+      supervisor: entry.supervisor || '',
+      skills: entry.skills || []
+    });
     setIsEditMode(true);
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this entry?')) {
-      setEntries(entries.filter(entry => entry.id !== id));
+      await deleteEntry(id);
     }
   };
 
   const handleView = (entry) => {
     setSelectedEntry(entry);
-    // You could open a view-only modal here
     alert(`Viewing: ${entry.title}\n\nStatus: ${entry.status}\nDate: ${entry.date}\nHours: ${entry.hours}\nSupervisor: ${entry.supervisor || 'Not specified'}\n\n${entry.description}`);
   };
 
@@ -266,6 +319,17 @@ function OJTEntries({ entries: propEntries, setEntries: propSetEntries }) {
       skills: formData.skills.filter(s => s !== skill)
     });
   };
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-content">
+          <div className="loading-spinner"></div>
+          <h2>Loading entries...</h2>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ojt-entries-container">
