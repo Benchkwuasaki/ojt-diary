@@ -1,4 +1,4 @@
-// src/components/AuthForm.jsx - COMPLETE REVISED VERSION
+// src/components/AuthForm.jsx - FIXED REGISTRATION FLOW
 import { useState, useEffect } from 'react';
 import './AuthForm.css';
 import { 
@@ -10,7 +10,8 @@ import { auth, db } from '../firebase/config';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  signOut
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -224,8 +225,11 @@ function AuthForm({ onLogin }) {
           role: 'student'
         });
 
+        // Sign out immediately after registration
+        await signOut(auth);
+
         // Show success message
-        showSuccess('Registration successful! Please sign in.');
+        showSuccess('Account created successfully! Please sign in with your credentials.');
         
         // Clear form data
         setFormData({
@@ -235,10 +239,10 @@ function AuthForm({ onLogin }) {
           confirmPassword: ''
         });
         
-        // Switch to login form after a brief delay
+        // Switch to login form after showing success message
         setTimeout(() => {
-          setIsLogin(true);
-        }, 500);
+          handleSwitchForm();
+        }, 2000); // Give user time to read the success message
       }
     } catch (error) {
       console.error('Auth Error:', error);
