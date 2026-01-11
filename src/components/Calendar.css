@@ -687,3 +687,264 @@
     margin-bottom: 6px;
   }
 }
+/* Add to the end of your existing Calendar.css */
+
+/* Responsive improvements for mobile */
+@media (max-width: 768px) {
+  .calendar-container {
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  
+  .calendar-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .calendar-controls {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .calendar-title {
+    font-size: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .month-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+  }
+  
+  .current-month {
+    font-size: 14px;
+    min-width: 140px;
+  }
+  
+  .calendar-grid {
+    gap: 4px;
+  }
+  
+  .calendar-day {
+    min-height: 70px;
+    padding: 4px;
+    border-radius: 8px;
+  }
+  
+  .day-number {
+    font-size: 13px;
+    font-weight: 700;
+  }
+  
+  .entry-indicator {
+    font-size: 10px;
+    padding: 2px 4px;
+    margin-bottom: 2px;
+  }
+  
+  .entry-title-short {
+    display: none;
+  }
+  
+  .more-entries {
+    font-size: 9px;
+  }
+  
+  .selected-date-details {
+    padding: 16px;
+  }
+  
+  .selected-date-details h3 {
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+  
+  .entry-item {
+    padding: 12px;
+  }
+  
+  .entry-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  
+  .entry-header h4 {
+    font-size: 15px;
+  }
+  
+  .status-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+  
+  .entry-description {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  
+  .entry-meta {
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+  }
+  
+  .skills-tags {
+    flex-wrap: wrap;
+  }
+  
+  .skill-tag {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-container {
+    padding: 12px;
+  }
+  
+  .calendar-day {
+    min-height: 65px;
+    border-radius: 6px;
+  }
+  
+  .day-number {
+    font-size: 12px;
+    margin-bottom: 2px;
+  }
+  
+  .calendar-day-header {
+    font-size: 10px;
+    padding: 8px 0;
+  }
+  
+  .nav-btn {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .today-btn, .view-btn {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .calendar-title {
+    font-size: 18px;
+  }
+  
+  .view-toggle {
+    padding: 3px;
+  }
+  
+  .view-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+  
+  .more-entries {
+    font-size: 8px;
+  }
+  
+  .no-entries {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  .calendar-day {
+    min-height: 60px;
+  }
+  
+  .day-number {
+    font-size: 11px;
+  }
+  
+  .calendar-grid {
+    gap: 2px;
+  }
+  
+  .nav-btn {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .current-month {
+    font-size: 13px;
+    min-width: 120px;
+  }
+  
+  .today-btn {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+}
+
+/* Ensure calendar grid doesn't overflow */
+.calendar-grid {
+  overflow: hidden;
+}
+
+/* Improve entry indicators for mobile */
+.entry-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 3px 6px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-title-short {
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.more-entries {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  text-align: center;
+  margin-top: 2px;
+}
+
+/* Week view improvements for mobile */
+@media (max-width: 768px) {
+  .week-day-header {
+    padding: 10px 12px;
+  }
+  
+  .week-day-name {
+    font-size: 14px;
+  }
+  
+  .week-day-number {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+  
+  .week-day-events {
+    padding: 8px;
+    min-height: 100px;
+  }
+  
+  .week-event {
+    font-size: 11px;
+    padding: 6px;
+    margin-bottom: 6px;
+  }
+}

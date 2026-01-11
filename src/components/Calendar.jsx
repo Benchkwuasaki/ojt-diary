@@ -1,8 +1,8 @@
-// src/components/Calendar.jsx - UPDATED WITH FIRESTORE INTEGRATION
+// src/components/Calendar.jsx - COMPLETE UPDATED VERSION
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { db, auth } from '../firebase/config';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import './Calendar.css';
 
 function Calendar() {
@@ -31,7 +31,11 @@ function Calendar() {
   const fetchEntries = async (userId) => {
     try {
       const entriesRef = collection(db, 'ojtEntries');
-      const q = query(entriesRef, where('userId', '==', userId));
+      const q = query(
+        entriesRef, 
+        where('userId', '==', userId),
+        orderBy('date', 'desc')
+      );
       
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const entriesData = [];
@@ -65,8 +69,31 @@ function Calendar() {
   };
 
   const getEntriesForDate = (date) => {
-    const dateString = date.toISOString().split('T')[0];
-    return entries.filter(entry => entry.date === dateString);
+    // Convert the date to YYYY-MM-DD format
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
+    return entries.filter(entry => {
+      if (!entry.date) return false;
+      
+      // Convert entry date to YYYY-MM-DD format
+      let entryDateString;
+      if (typeof entry.date === 'string') {
+        entryDateString = entry.date; // Already in YYYY-MM-DD format
+      } else if (entry.date.toDate) {
+        // Handle Firestore timestamp
+        const d = entry.date.toDate();
+        entryDateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      } else if (entry.date instanceof Date) {
+        entryDateString = `${entry.date.getFullYear()}-${String(entry.date.getMonth() + 1).padStart(2, '0')}-${String(entry.date.getDate()).padStart(2, '0')}`;
+      } else {
+        return false;
+      }
+      
+      return entryDateString === dateString;
+    });
   };
 
   const getStatusIcon = (status) => {
@@ -107,7 +134,6 @@ function Calendar() {
     // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
-      const dateString = date.toISOString().split('T')[0];
       const dateEntries = getEntriesForDate(date);
       const isToday = date.toDateString() === new Date().toDateString();
       const isSelected = selectedDate && selectedDate.toDateString() === date.toDateString();
@@ -145,8 +171,29 @@ function Calendar() {
 
   const getSelectedDateEntries = () => {
     if (!selectedDate) return [];
-    const dateString = selectedDate.toISOString().split('T')[0];
-    return entries.filter(entry => entry.date === dateString);
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
+    return entries.filter(entry => {
+      if (!entry.date) return false;
+      
+      // Convert entry date to YYYY-MM-DD format
+      let entryDateString;
+      if (typeof entry.date === 'string') {
+        entryDateString = entry.date;
+      } else if (entry.date.toDate) {
+        const d = entry.date.toDate();
+        entryDateString = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      } else if (entry.date instanceof Date) {
+        entryDateString = `${entry.date.getFullYear()}-${String(entry.date.getMonth() + 1).padStart(2, '0')}-${String(entry.date.getDate()).padStart(2, '0')}`;
+      } else {
+        return false;
+      }
+      
+      return entryDateString === dateString;
+    });
   };
 
   if (loading) {

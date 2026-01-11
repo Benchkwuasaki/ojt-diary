@@ -1,4 +1,4 @@
-// src/components/OJTEntries.jsx - COMPLETE REVISED VERSION WITH FIRESTORE INDEX
+// src/components/OJTEntries.jsx - COMPLETE REVISED VERSION WITH NOTIFICATIONS
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
@@ -49,6 +49,7 @@ function OJTEntries() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -61,6 +62,7 @@ function OJTEntries() {
   });
 
   const suggestionsRef = useRef(null);
+  const notificationTimeoutRef = useRef(null);
 
   const statusOptions = [
     { value: 'pending', label: 'Pending', color: '#f59e0b', icon: <Clock size={14} /> },
@@ -140,6 +142,14 @@ function OJTEntries() {
     }
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (notificationTimeoutRef.current) {
+        clearTimeout(notificationTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const loadFromLocalStorage = () => {
     const user = auth.currentUser;
     if (user) {
@@ -148,6 +158,21 @@ function OJTEntries() {
         setEntries(JSON.parse(savedEntries));
       }
     }
+  };
+
+  const showNotification = (message, type = 'success') => {
+    // Clear any existing timeout
+    if (notificationTimeoutRef.current) {
+      clearTimeout(notificationTimeoutRef.current);
+    }
+    
+    // Set the new notification
+    setNotification({ message, type });
+    
+    // Auto-hide after 3 seconds
+    notificationTimeoutRef.current = setTimeout(() => {
+      setNotification(null);
+    }, 3000);
   };
 
   const saveEntryToFirestore = async (entryData, isUpdate = false) => {
@@ -216,15 +241,26 @@ function OJTEntries() {
 
     try {
       await saveEntryToFirestore(formData, isEditMode);
+      
+      // Show success notification
+      showNotification(
+        isEditMode ? 'Entry updated successfully!' : 'Entry added successfully!'
+      );
+      
       resetForm();
       setIsModalOpen(false);
     } catch (firestoreError) {
       const localStorageSuccess = saveEntryToLocalStorage(formData, isEditMode);
       
       if (localStorageSuccess) {
+        // Show success notification for local storage
+        showNotification(
+          `${isEditMode ? 'Entry updated' : 'Entry added'} locally (Firestore unavailable)`,
+          'info'
+        );
+        
         resetForm();
         setIsModalOpen(false);
-        setError('Entry saved locally (Firestore unavailable)');
       } else {
         setError('Failed to save entry. Please try again.');
       }
@@ -238,6 +274,9 @@ function OJTEntries() {
 
     try {
       await deleteDoc(doc(db, 'ojtEntries', id));
+      
+      // Show success notification
+      showNotification('Entry deleted successfully!');
       
       const user = auth.currentUser;
       if (user) {
@@ -261,7 +300,8 @@ function OJTEntries() {
           setEntries(updatedEntries);
         }
       }
-      alert('Deleted locally (Firestore unavailable)');
+      
+      showNotification('Entry deleted locally (Firestore unavailable)', 'info');
     }
   };
 
@@ -381,28 +421,37 @@ function OJTEntries() {
 
   return (
     <div className="ojt-entries-container">
+      {/* Notification */}
+      {notification && (
+        <div className="notification-overlay">
+          <div className={`notification notification-${notification.type}`}>
+            <div className="notification-content">
+              {notification.type === 'success' && <CheckCircle size={20} />}
+              {notification.type === 'info' && <AlertCircle size={20} />}
+              <span>{notification.message}</span>
+            </div>
+            <button 
+              className="notification-close"
+              onClick={() => {
+                setNotification(null);
+                if (notificationTimeoutRef.current) {
+                  clearTimeout(notificationTimeoutRef.current);
+                }
+              }}
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Error Message */}
       {error && (
-        <div style={{
-          background: '#fef2f2',
-          border: '1px solid #fecaca',
-          color: '#dc2626',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
+        <div className="error-message">
           <span>{error}</span>
           <button 
             onClick={() => setError(null)}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#dc2626',
-              cursor: 'pointer',
-              padding: '4px'
-            }}
+            className="error-close-btn"
           >
             <X size={16} />
           </button>
