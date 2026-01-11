@@ -1,4 +1,4 @@
-// src/components/OJTEntries.jsx - COMPLETE REVISED VERSION
+// src/components/OJTEntries.jsx - COMPLETE REVISED VERSION WITH FIRESTORE INDEX
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
@@ -36,7 +36,6 @@ import {
 import './OJTEntries.css';
 
 function OJTEntries() {
-  // State management
   const [entries, setEntries] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -51,7 +50,6 @@ function OJTEntries() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   
-  // Form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -64,7 +62,6 @@ function OJTEntries() {
 
   const suggestionsRef = useRef(null);
 
-  // Constants
   const statusOptions = [
     { value: 'pending', label: 'Pending', color: '#f59e0b', icon: <Clock size={14} /> },
     { value: 'in-progress', label: 'In Progress', color: '#3b82f6', icon: <AlertCircle size={14} /> },
@@ -79,20 +76,14 @@ function OJTEntries() {
     'Project Management', 'Data Analysis', 'UI/UX Design', 'API Development'
   ];
 
-  // ==================== FIREBASE OPERATIONS ====================
-
-  // Fetch entries from Firestore
   useEffect(() => {
     const user = auth.currentUser;
     
     if (!user) {
-      console.log('No user logged in, showing empty state');
       setLoading(false);
       setEntries([]);
       return;
     }
-
-    console.log('Fetching entries for user:', user.uid);
     
     try {
       const entriesRef = collection(db, 'ojtEntries');
@@ -102,21 +93,16 @@ function OJTEntries() {
         orderBy('date', 'desc')
       );
       
-      // Set a timeout to prevent infinite loading
       const timeoutId = setTimeout(() => {
         if (loading) {
-          console.log('Firestore fetch timeout, using fallback');
           setLoading(false);
           loadFromLocalStorage();
         }
-      }, 5000); // 5 second timeout
+      }, 5000);
 
       const unsubscribe = onSnapshot(q, 
-        // Success callback
         (querySnapshot) => {
           clearTimeout(timeoutId);
-          console.log('Firestore query successful, documents:', querySnapshot.size);
-          
           const entriesData = [];
           querySnapshot.forEach((doc) => {
             entriesData.push({
@@ -129,19 +115,15 @@ function OJTEntries() {
           setLoading(false);
           setError(null);
           
-          // Also save to localStorage as backup
           if (entriesData.length > 0) {
             localStorage.setItem(`ojtEntries_${user.uid}`, JSON.stringify(entriesData));
           }
         },
-        // Error callback
         (error) => {
           clearTimeout(timeoutId);
           console.error('Firestore error:', error);
-          setError(`Firestore error: ${error.code} - ${error.message}`);
+          setError(`Firestore error: ${error.code}`);
           setLoading(false);
-          
-          // Fallback to localStorage
           loadFromLocalStorage();
         }
       );
@@ -158,19 +140,16 @@ function OJTEntries() {
     }
   }, []);
 
-  // Load entries from localStorage (fallback)
   const loadFromLocalStorage = () => {
     const user = auth.currentUser;
     if (user) {
       const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
       if (savedEntries) {
-        console.log('Loaded from localStorage:', JSON.parse(savedEntries).length, 'entries');
         setEntries(JSON.parse(savedEntries));
       }
     }
   };
 
-  // Save entry to Firestore
   const saveEntryToFirestore = async (entryData, isUpdate = false) => {
     const user = auth.currentUser;
     if (!user) {
@@ -186,14 +165,10 @@ function OJTEntries() {
       };
 
       if (isUpdate && selectedEntry) {
-        // Update existing entry
         const entryRef = doc(db, 'ojtEntries', selectedEntry.id);
         await updateDoc(entryRef, entryWithMetadata);
-        console.log('Entry updated in Firestore');
       } else {
-        // Add new entry
         await addDoc(collection(db, 'ojtEntries'), entryWithMetadata);
-        console.log('Entry added to Firestore');
       }
       
       return true;
@@ -203,7 +178,6 @@ function OJTEntries() {
     }
   };
 
-  // Save entry to localStorage (fallback)
   const saveEntryToLocalStorage = (entryData, isUpdate = false) => {
     const user = auth.currentUser;
     if (!user) return false;
@@ -218,7 +192,7 @@ function OJTEntries() {
     } else {
       const newEntry = {
         ...entryData,
-        id: currentEntries.length > 0 ? Math.max(...currentEntries.map(e => e.id)) + 1 : 1
+        id: Date.now().toString()
       };
       currentEntries.push(newEntry);
     }
@@ -227,8 +201,6 @@ function OJTEntries() {
     setEntries(currentEntries);
     return true;
   };
-
-  // ==================== FORM HANDLING ====================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -243,14 +215,10 @@ function OJTEntries() {
     }
 
     try {
-      // Try Firestore first
       await saveEntryToFirestore(formData, isEditMode);
       resetForm();
       setIsModalOpen(false);
     } catch (firestoreError) {
-      console.log('Firestore save failed, falling back to localStorage:', firestoreError);
-      
-      // Fallback to localStorage
       const localStorageSuccess = saveEntryToLocalStorage(formData, isEditMode);
       
       if (localStorageSuccess) {
@@ -269,10 +237,8 @@ function OJTEntries() {
     if (!window.confirm('Are you sure you want to delete this entry?')) return;
 
     try {
-      // Try Firestore first
       await deleteDoc(doc(db, 'ojtEntries', id));
       
-      // Also remove from localStorage
       const user = auth.currentUser;
       if (user) {
         const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
@@ -285,7 +251,6 @@ function OJTEntries() {
     } catch (error) {
       console.error('Error deleting from Firestore:', error);
       
-      // Fallback to localStorage
       const user = auth.currentUser;
       if (user) {
         const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
@@ -316,7 +281,6 @@ function OJTEntries() {
   };
 
   const handleView = (entry) => {
-    setSelectedEntry(entry);
     alert(`Viewing: ${entry.title}\n\nStatus: ${entry.status}\nDate: ${entry.date}\nHours: ${entry.hours}\nSupervisor: ${entry.supervisor || 'Not specified'}\n\n${entry.description}`);
   };
 
@@ -335,8 +299,6 @@ function OJTEntries() {
     setSelectedEntry(null);
     setIsEditMode(false);
   };
-
-  // ==================== HELPER FUNCTIONS ====================
 
   const getStatusColor = (status) => {
     const statusOption = statusOptions.find(opt => opt.value === status);
@@ -371,16 +333,11 @@ function OJTEntries() {
     });
   };
 
-  // ==================== DATA PROCESSING ====================
-
-  // Stats calculation
   const totalEntries = entries.length;
   const completedEntries = entries.filter(e => e.status === 'completed').length;
   const inProgressEntries = entries.filter(e => e.status === 'in-progress').length;
   const totalHours = entries.reduce((total, entry) => total + (entry.hours || 0), 0);
-  const completionRate = totalEntries > 0 ? Math.round((completedEntries / totalEntries) * 100) : 0;
 
-  // Filter and sort entries
   const filteredEntries = entries
     .filter(entry => {
       const matchesSearch = entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -411,15 +368,12 @@ function OJTEntries() {
       return 0;
     });
 
-  // ==================== RENDER FUNCTIONS ====================
-
   if (loading) {
     return (
       <div className="loading-screen">
         <div className="loading-content">
           <div className="loading-spinner"></div>
           <h2>Loading entries...</h2>
-          {error && <p style={{ color: '#ef4444', marginTop: '10px' }}>{error}</p>}
         </div>
       </div>
     );
@@ -427,7 +381,6 @@ function OJTEntries() {
 
   return (
     <div className="ojt-entries-container">
-      {/* Error Banner */}
       {error && (
         <div style={{
           background: '#fef2f2',
@@ -456,7 +409,6 @@ function OJTEntries() {
         </div>
       )}
 
-      {/* Header */}
       <div className="entries-header">
         <div className="header-content">
           <h1 className="entries-title">OJT Entries</h1>
@@ -464,7 +416,6 @@ function OJTEntries() {
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card primary">
           <div className="stat-icon">
@@ -507,7 +458,6 @@ function OJTEntries() {
         </div>
       </div>
 
-      {/* Quick Filter Buttons */}
       <div className="quick-filters">
         <button 
           className={`filter-btn ${activeFilter === 'all' ? 'active' : ''}`}
@@ -538,7 +488,6 @@ function OJTEntries() {
         </button>
       </div>
 
-      {/* Search and Filter Bar */}
       <div className="controls-bar">
         <div className="search-box">
           <Search size={18} color="#64748b" />
@@ -573,7 +522,6 @@ function OJTEntries() {
         </div>
       </div>
 
-      {/* Entries Grid */}
       <div className="entries-grid">
         {filteredEntries.map(entry => (
           <div key={entry.id} className="entry-card">
@@ -653,7 +601,6 @@ function OJTEntries() {
         ))}
       </div>
 
-      {/* Empty State */}
       {filteredEntries.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">
@@ -672,7 +619,6 @@ function OJTEntries() {
         </div>
       )}
 
-      {/* Floating Action Button */}
       <button 
         className="fab"
         onClick={() => {
@@ -685,7 +631,6 @@ function OJTEntries() {
         {saving ? <Loader2 size={24} className="spin" /> : <Plus size={24} />}
       </button>
 
-      {/* Modal for Add/Edit */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => {
           if (!saving) {
@@ -805,7 +750,6 @@ function OJTEntries() {
                 <label>Skills Developed</label>
                 <p className="skills-hint">Type a skill and press Enter, or select from suggestions</p>
                 
-                {/* Selected Skills Display */}
                 <div className="selected-skills-display">
                   {formData.skills.map((skill, index) => (
                     <span key={index} className="selected-skill-tag">
@@ -822,7 +766,6 @@ function OJTEntries() {
                   ))}
                 </div>
                 
-                {/* Skills Input with Autocomplete */}
                 <div className="skills-input-wrapper" ref={suggestionsRef}>
                   <input
                     type="text"
@@ -843,7 +786,6 @@ function OJTEntries() {
                     disabled={saving}
                   />
                   
-                  {/* Skill Suggestions */}
                   {showSuggestions && skillInput && !saving && (
                     <div className="skills-suggestions">
                       {skillOptions
@@ -857,7 +799,6 @@ function OJTEntries() {
                             key={index}
                             className="suggestion-item"
                             onClick={() => !saving && addSkill(skill)}
-                            style={{ cursor: saving ? 'not-allowed' : 'pointer' }}
                           >
                             {skill}
                           </div>
@@ -867,7 +808,6 @@ function OJTEntries() {
                         <div
                           className="suggestion-item add-new"
                           onClick={() => !saving && addSkill(skillInput)}
-                          style={{ cursor: saving ? 'not-allowed' : 'pointer' }}
                         >
                           <Plus size={12} />
                           Add "{skillInput.trim()}"
@@ -877,7 +817,6 @@ function OJTEntries() {
                   )}
                 </div>
                 
-                {/* Predefined Skill Buttons */}
                 <p className="skills-hint">Or select from common skills:</p>
                 <div className="skills-selector">
                   {skillOptions.map(skill => (
@@ -925,7 +864,7 @@ function OJTEntries() {
                 <button type="submit" className="submit-btn" disabled={saving}>
                   {saving ? (
                     <>
-                      <Loader2 size={16} className="spin" style={{ marginRight: '8px' }} />
+                      <Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
                       Saving...
                     </>
                   ) : isEditMode ? 'Update Entry' : 'Save Entry'}
@@ -935,17 +874,6 @@ function OJTEntries() {
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        .spin {
-          animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
