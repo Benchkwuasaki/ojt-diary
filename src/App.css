@@ -95,3 +95,99 @@ body {
     margin-left: 0;
   }
 }
+/* src/App.css - Add these styles */
+
+/* Mobile responsiveness improvements */
+@media (max-width: 768px) {
+  .main-content {
+    padding: 20px 16px;
+    padding-top: 80px; /* Space for mobile menu */
+  }
+  
+  .loading-content {
+    padding: 30px 20px;
+    max-width: 90%;
+  }
+  
+  .loading-content h2 {
+    font-size: 18px;
+  }
+  
+  .coming-soon {
+    font-size: 20px;
+    padding: 40px 20px;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding: 16px 12px;
+    padding-top: 70px;
+  }
+  
+  .loading-content {
+    padding: 20px;
+  }
+  
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .coming-soon {
+    font-size: 18px;
+    padding: 30px 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .main-content {
+    padding: 12px 10px;
+    padding-top: 65px;
+  }
+  
+  .coming-soon {
+    font-size: 16px;
+  }
+}
+
+/* Ensure full height on mobile */
+.App {
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Loading state improvements */
+.loading-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+  width: 100%;
+}
+
+.loading-content {
+  background: white;
+  padding: 40px;
+  border-radius: 20px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #22c55e;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

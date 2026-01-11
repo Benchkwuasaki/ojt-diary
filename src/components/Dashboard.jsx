@@ -1,4 +1,4 @@
-// src/components/Dashboard.jsx - UPDATED WITH FIRESTORE INTEGRATION
+// src/components/Dashboard.jsx - UPDATED WITH RESPONSIVE DESIGN
 import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
@@ -66,7 +66,8 @@ function Dashboard({ user, onNavigate }) {
       value: `${completionRate}%`, 
       change: completionRate >= 85 ? '+5%' : '0%', 
       icon: <TrendingUp size={24} />,
-      color: '#22c55e'
+      color: '#22c55e',
+      colorRgb: '34, 197, 94'
     },
     { 
       id: 2, 
@@ -74,7 +75,8 @@ function Dashboard({ user, onNavigate }) {
       value: `${inProgressEntries}`, 
       change: inProgressEntries > 0 ? `+${inProgressEntries}` : '0', 
       icon: <Users size={24} />,
-      color: '#3b82f6'
+      color: '#3b82f6',
+      colorRgb: '59, 130, 246'
     },
     { 
       id: 3, 
@@ -82,7 +84,8 @@ function Dashboard({ user, onNavigate }) {
       value: `${totalHours}`, 
       change: totalHours > 0 ? `+${totalHours}` : '0', 
       icon: <Clock size={24} />,
-      color: '#f59e0b'
+      color: '#f59e0b',
+      colorRgb: '245, 158, 11'
     },
     { 
       id: 4, 
@@ -90,7 +93,8 @@ function Dashboard({ user, onNavigate }) {
       value: `${completedEntries}`, 
       change: completedEntries > 0 ? `+${completedEntries}` : '0', 
       icon: <CheckCircle size={24} />,
-      color: '#10b981'
+      color: '#10b981',
+      colorRgb: '16, 185, 129'
     }
   ];
 
@@ -132,7 +136,6 @@ function Dashboard({ user, onNavigate }) {
       } else if (action === 'view-calendar') {
         onNavigate('calendar');
       } else {
-        // For other actions, you could show a message or implement later
         console.log(`${action} clicked`);
       }
     }
@@ -161,7 +164,10 @@ function Dashboard({ user, onNavigate }) {
             <span>Overall Progress</span>
             <span className="progress-percentage">{completionRate}%</span>
           </div>
-          <div className="progress-bar" style={{ width: `${completionRate}%` }}></div>
+          <div 
+            className={`progress-bar ${completionRate === 0 ? 'zero-progress' : ''}`} 
+            style={{ width: `${Math.max(completionRate, 3)}%` }}
+          ></div>
         </div>
       </div>
 
@@ -173,7 +179,7 @@ function Dashboard({ user, onNavigate }) {
             className="stat-card"
             style={{ 
               '--color': stat.color,
-              '--color-rgb': stat.color.replace('#', '').match(/.{2}/g).map(c => parseInt(c, 16)).join(', ')
+              '--color-rgb': stat.colorRgb
             }}
           >
             <div className="stat-header">
@@ -284,7 +290,8 @@ function Dashboard({ user, onNavigate }) {
                     padding: '4px 8px',
                     borderRadius: '12px',
                     fontSize: '12px',
-                    fontWeight: '500'
+                    fontWeight: '500',
+                    whiteSpace: 'nowrap'
                   }}
                 >
                   {entry.status === 'completed' ? 'Completed' : 
