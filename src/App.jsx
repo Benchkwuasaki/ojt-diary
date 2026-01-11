@@ -8,6 +8,7 @@ import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
 import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
+import Profile from './components/Profile'; // Add this import
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -86,8 +87,8 @@ function App() {
         return <div className="coming-soon">Progress - Coming Soon</div>;
       case 'notifications':
         return <div className="coming-soon">Notifications - Coming Soon</div>;
-      case 'profile':
-        return <div className="coming-soon">Profile - Coming Soon</div>;
+      case 'profile': // Update this case
+      return <Profile user={user} />;
       case 'settings':
         return <div className="coming-soon">Settings - Coming Soon</div>;
       case 'dashboard':

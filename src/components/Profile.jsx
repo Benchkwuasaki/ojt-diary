@@ -1,0 +1,676 @@
+// src/components/Profile.jsx
+import React, { useState, useEffect } from 'react';
+import { 
+  User, 
+  Camera, 
+  Save, 
+  X, 
+  Lock, 
+  Mail, 
+  Phone, 
+  Calendar,
+  Upload,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
+import { auth, storage, db } from '../firebase/config';
+import { updateProfile, updatePassword, updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
+import { doc, updateDoc, getDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import './Profile.css';
+
+function Profile({ user }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isPasswordEditing, setIsPasswordEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [notification, setNotification] = useState(null);
+  const [userData, setUserData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    department: '',
+    studentId: '',
+    bio: '',
+    joinDate: ''
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  const [errors, setErrors] = useState({});
+
+  // Load user data from Firestore
+  useEffect(() => {
+    const loadUserData = async () => {
+      if (user?.uid) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const data = userDoc.data();
+            setUserData({
+              name: data.displayName || user.name || '',
+              email: user.email || '',
+              phone: data.phone || '',
+              department: data.department || 'Computer Science',
+              studentId: data.studentId || '',
+              bio: data.bio || 'OJT Student passionate about web development and UI/UX design.',
+              joinDate: data.joinDate || '2024'
+            });
+            
+            // Set photo preview if available
+            if (data.photoURL) {
+              setPhotoPreview(data.photoURL);
+            } else if (user.photoURL) {
+              setPhotoPreview(user.photoURL);
+            }
+          } else {
+            // Use auth user data
+            setUserData(prev => ({
+              ...prev,
+              name: user.name || user.displayName || '',
+              email: user.email || '',
+              joinDate: '2024'
+            }));
+          }
+        } catch (error) {
+          console.error('Error loading user data:', error);
+        }
+      }
+    };
+
+    loadUserData();
+  }, [user]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!userData.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+    
+    if (!userData.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(userData.email)) {
+      newErrors.email = 'Email is invalid';
+    }
+    
+    if (userData.phone && !/^[\+]?[1-9][\d]{0,15}$/.test(userData.phone.replace(/[\s\-\(\)]/g, ''))) {
+      newErrors.phone = 'Phone number is invalid';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const validatePassword = () => {
+    const newErrors = {};
+    
+    if (!passwordData.currentPassword) {
+      newErrors.currentPassword = 'Current password is required';
+    }
+    
+    if (!passwordData.newPassword) {
+      newErrors.newPassword = 'New password is required';
+    } else if (passwordData.newPassword.length < 6) {
+      newErrors.newPassword = 'Password must be at least 6 characters';
+    }
+    
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setUserData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type and size
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+
+    if (!validTypes.includes(file.type)) {
+      showNotification('Please upload a valid image (JPEG, PNG, GIF)', 'error');
+      return;
+    }
+
+    if (file.size > maxSize) {
+      showNotification('Image size must be less than 5MB', 'error');
+      return;
+    }
+
+    setUploadingPhoto(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      // Upload to Firebase Storage
+      const storageRef = ref(storage, `profile-photos/${user.uid}/${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const photoURL = await getDownloadURL(storageRef);
+
+      // Update user profile
+      await updateProfile(auth.currentUser, {
+        photoURL: photoURL
+      });
+
+      // Update in Firestore
+      await updateDoc(doc(db, 'users', user.uid), {
+        photoURL: photoURL
+      });
+
+      showNotification('Profile photo updated successfully!', 'success');
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      showNotification('Failed to upload photo. Please try again.', 'error');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!validateForm()) return;
+
+    setIsLoading(true);
+    try {
+      const currentUser = auth.currentUser;
+      
+      // Update profile in Firebase Auth
+      await updateProfile(currentUser, {
+        displayName: userData.name
+      });
+
+      // Update email if changed
+      if (userData.email !== user.email) {
+        await updateEmail(currentUser, userData.email);
+      }
+
+      // Update additional data in Firestore
+      await updateDoc(doc(db, 'users', user.uid), {
+        displayName: userData.name,
+        email: userData.email,
+        phone: userData.phone,
+        department: userData.department,
+        studentId: userData.studentId,
+        bio: userData.bio,
+        updatedAt: new Date().toISOString()
+      });
+
+      showNotification('Profile updated successfully!', 'success');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      if (error.code === 'auth/requires-recent-login') {
+        showNotification('Please re-login to update your email', 'error');
+      } else {
+        showNotification('Failed to update profile. Please try again.', 'error');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!validatePassword()) return;
+
+    setIsLoading(true);
+    try {
+      const currentUser = auth.currentUser;
+      
+      // Re-authenticate user
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        passwordData.currentPassword
+      );
+      
+      await reauthenticateWithCredential(currentUser, credential);
+      
+      // Update password
+      await updatePassword(currentUser, passwordData.newPassword);
+      
+      showNotification('Password changed successfully!', 'success');
+      setIsPasswordEditing(false);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      if (error.code === 'auth/wrong-password') {
+        showNotification('Current password is incorrect', 'error');
+      } else {
+        showNotification('Failed to change password. Please try again.', 'error');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const showNotification = (message, type) => {
+    setNotification({ message, type });
+    setTimeout(() => {
+      setNotification(null);
+    }, 5000);
+  };
+
+  const getInitials = () => {
+    if (userData.name) {
+      return userData.name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return 'U';
+  };
+
+  return (
+    <div className="profile-container">
+      {/* Notification */}
+      {notification && (
+        <div className={`notification ${notification.type}`}>
+          {notification.type === 'success' ? (
+            <CheckCircle size={20} />
+          ) : (
+            <AlertCircle size={20} />
+          )}
+          <span>{notification.message}</span>
+        </div>
+      )}
+
+      {/* Profile Header */}
+      <div className="profile-header">
+        <div className="profile-avatar-section">
+          <div className="profile-avatar-wrapper">
+            {photoPreview ? (
+              <img 
+                src={photoPreview} 
+                alt="Profile" 
+                className="profile-avatar"
+              />
+            ) : (
+              <div className="profile-avatar-initials">
+                {getInitials()}
+              </div>
+            )}
+            <label className="upload-photo-btn" htmlFor="photo-upload">
+              <Camera size={16} />
+              <span>Change Photo</span>
+              <input
+                id="photo-upload"
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                disabled={uploadingPhoto}
+                hidden
+              />
+            </label>
+            {uploadingPhoto && (
+              <div className="uploading-overlay">
+                <div className="uploading-spinner"></div>
+              </div>
+            )}
+          </div>
+          
+          <div className="profile-info-header">
+            <h1 className="profile-name">{userData.name}</h1>
+            <p className="profile-email">{userData.email}</p>
+            <div className="profile-role-badge">
+              <User size={12} />
+              <span>OJT Student</span>
+            </div>
+          </div>
+        </div>
+
+        {!isEditing && !isPasswordEditing && (
+          <button 
+            className="edit-profile-btn"
+            onClick={() => setIsEditing(true)}
+          >
+            Edit Profile
+          </button>
+        )}
+      </div>
+
+      {/* Profile Content */}
+      <div className="profile-content">
+        {/* Personal Information Section */}
+        <div className="profile-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              <User size={20} />
+              Personal Information
+            </h2>
+            {isEditing && (
+              <div className="section-actions">
+                <button 
+                  className="save-btn"
+                  onClick={handleSaveProfile}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="loading-spinner-small"></div>
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  Save Changes
+                </button>
+                <button 
+                  className="cancel-btn"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setErrors({});
+                  }}
+                  disabled={isLoading}
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="profile-form">
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">
+                  <User size={16} />
+                  Full Name
+                </label>
+                {isEditing ? (
+                  <>
+                    <input
+                      type="text"
+                      name="name"
+                      value={userData.name}
+                      onChange={handleInputChange}
+                      className={`form-input ${errors.name ? 'error' : ''}`}
+                      placeholder="Enter your full name"
+                    />
+                    {errors.name && (
+                      <span className="error-message">{errors.name}</span>
+                    )}
+                  </>
+                ) : (
+                  <div className="form-value">{userData.name}</div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Mail size={16} />
+                  Email Address
+                </label>
+                {isEditing ? (
+                  <>
+                    <input
+                      type="email"
+                      name="email"
+                      value={userData.email}
+                      onChange={handleInputChange}
+                      className={`form-input ${errors.email ? 'error' : ''}`}
+                      placeholder="Enter your email"
+                    />
+                    {errors.email && (
+                      <span className="error-message">{errors.email}</span>
+                    )}
+                  </>
+                ) : (
+                  <div className="form-value">{userData.email}</div>
+                )}
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">
+                  <Phone size={16} />
+                  Phone Number
+                </label>
+                {isEditing ? (
+                  <>
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={userData.phone}
+                      onChange={handleInputChange}
+                      className={`form-input ${errors.phone ? 'error' : ''}`}
+                      placeholder="Enter your phone number"
+                    />
+                    {errors.phone && (
+                      <span className="error-message">{errors.phone}</span>
+                    )}
+                  </>
+                ) : (
+                  <div className="form-value">{userData.phone || 'Not set'}</div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">
+                  <Calendar size={16} />
+                  Join Date
+                </label>
+                <div className="form-value">{userData.joinDate}</div>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group full-width">
+                <label className="form-label">Bio</label>
+                {isEditing ? (
+                  <textarea
+                    name="bio"
+                    value={userData.bio}
+                    onChange={handleInputChange}
+                    className="form-textarea"
+                    placeholder="Tell us about yourself"
+                    rows="3"
+                  />
+                ) : (
+                  <div className="form-value bio-text">{userData.bio}</div>
+                )}
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">Department</label>
+                {isEditing ? (
+                  <select
+                    name="department"
+                    value={userData.department}
+                    onChange={handleInputChange}
+                    className="form-select"
+                  >
+                    <option value="Computer Science">Computer Science</option>
+                    <option value="Information Technology">Information Technology</option>
+                    <option value="Software Engineering">Software Engineering</option>
+                    <option value="Data Science">Data Science</option>
+                    <option value="Cybersecurity">Cybersecurity</option>
+                  </select>
+                ) : (
+                  <div className="form-value">{userData.department}</div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Student ID</label>
+                {isEditing ? (
+                  <input
+                    type="text"
+                    name="studentId"
+                    value={userData.studentId}
+                    onChange={handleInputChange}
+                    className="form-input"
+                    placeholder="Enter student ID"
+                  />
+                ) : (
+                  <div className="form-value">{userData.studentId || 'Not set'}</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Password Change Section */}
+        <div className="profile-section">
+          <div className="section-header">
+            <h2 className="section-title">
+              <Lock size={20} />
+              Password & Security
+            </h2>
+            {!isPasswordEditing && !isEditing && (
+              <button 
+                className="change-password-btn"
+                onClick={() => setIsPasswordEditing(true)}
+              >
+                Change Password
+              </button>
+            )}
+          </div>
+
+          {isPasswordEditing && (
+            <div className="password-form">
+              <div className="form-row">
+                <div className="form-group full-width">
+                  <label className="form-label">Current Password</label>
+                  <input
+                    type="password"
+                    name="currentPassword"
+                    value={passwordData.currentPassword}
+                    onChange={handlePasswordChange}
+                    className={`form-input ${errors.currentPassword ? 'error' : ''}`}
+                    placeholder="Enter current password"
+                  />
+                  {errors.currentPassword && (
+                    <span className="error-message">{errors.currentPassword}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="form-label">New Password</label>
+                  <input
+                    type="password"
+                    name="newPassword"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordChange}
+                    className={`form-input ${errors.newPassword ? 'error' : ''}`}
+                    placeholder="Enter new password"
+                  />
+                  {errors.newPassword && (
+                    <span className="error-message">{errors.newPassword}</span>
+                  )}
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Confirm Password</label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordChange}
+                    className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
+                    placeholder="Confirm new password"
+                  />
+                  {errors.confirmPassword && (
+                    <span className="error-message">{errors.confirmPassword}</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="password-actions">
+                <button 
+                  className="save-btn"
+                  onClick={handleChangePassword}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <div className="loading-spinner-small"></div>
+                  ) : (
+                    <Save size={16} />
+                  )}
+                  Update Password
+                </button>
+                <button 
+                  className="cancel-btn"
+                  onClick={() => {
+                    setIsPasswordEditing(false);
+                    setPasswordData({
+                      currentPassword: '',
+                      newPassword: '',
+                      confirmPassword: ''
+                    });
+                    setErrors({});
+                  }}
+                  disabled={isLoading}
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!isPasswordEditing && (
+            <div className="security-info">
+              <p className="info-text">
+                Last password change: <span className="info-value">Recently</span>
+              </p>
+              <p className="info-text">
+                Account status: <span className="info-value active">Active</span>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Profile;
