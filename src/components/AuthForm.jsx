@@ -1,10 +1,9 @@
-// Update the AuthForm.jsx component
-
+// src/components/AuthForm.jsx - COMPLETE REVISED VERSION
 import { useState, useEffect } from 'react';
 import './AuthForm.css';
 import { 
   Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Zap, Users, 
-  AlertCircle, X 
+  AlertCircle, X, CheckCircle 
 } from 'lucide-react';
 import benchlogo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png';
 import { auth, db } from '../firebase/config';
@@ -23,7 +22,7 @@ const ErrorNotification = ({ message, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       handleClose();
-    }, 5000); // Auto dismiss after 5 seconds
+    }, 5000);
 
     return () => clearTimeout(timer);
   }, []);
@@ -64,6 +63,55 @@ const ErrorNotification = ({ message, onClose }) => {
   );
 };
 
+// Success Notification Component
+const SuccessNotification = ({ message, onClose }) => {
+  const [isVisible, setIsVisible] = useState(true);
+  const [isClosing, setIsClosing] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleClose();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      setIsVisible(false);
+      onClose();
+    }, 500);
+  };
+
+  if (!isVisible) return null;
+
+  return (
+    <div className={`success-notification ${isClosing ? 'hide' : 'show'}`}>
+      <div className="success-icon">
+        <CheckCircle size={20} />
+      </div>
+      <div className="success-content">
+        <h4 className="success-title">
+          <CheckCircle size={16} />
+          Success!
+        </h4>
+        <p className="success-message">{message}</p>
+      </div>
+      <button 
+        className="success-close" 
+        onClick={handleClose}
+        aria-label="Close success message"
+      >
+        <X size={18} />
+      </button>
+      <div className="error-progress">
+        <div className="error-progress-bar"></div>
+      </div>
+    </div>
+  );
+};
+
 function AuthForm({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
@@ -72,6 +120,7 @@ function AuthForm({ onLogin }) {
   const [isMobile, setIsMobile] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -92,20 +141,29 @@ function AuthForm({ onLogin }) {
 
   const showError = (errorMessage) => {
     setError(errorMessage);
-    // Auto-clear error after 5 seconds
-    setTimeout(() => {
-      setError(null);
-    }, 5000);
+    // Clear success message if showing
+    if (success) setSuccess(null);
+  };
+
+  const showSuccess = (successMessage) => {
+    setSuccess(successMessage);
+    // Clear error message if showing
+    if (error) setError(null);
   };
 
   const clearError = () => {
     setError(null);
   };
 
+  const clearSuccess = () => {
+    setSuccess(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    clearError(); // Clear any existing errors
+    clearError();
+    clearSuccess();
 
     try {
       if (isLogin) {
@@ -163,17 +221,28 @@ function AuthForm({ onLogin }) {
           name: formData.name,
           email: formData.email,
           createdAt: new Date().toISOString(),
-          role: 'student' // default role
+          role: 'student'
         });
 
-        // Switch to login form after successful registration
-        handleSwitchForm();
-        showError('Registration successful! Please sign in.');
+        // Show success message
+        showSuccess('Registration successful! Please sign in.');
+        
+        // Clear form data
+        setFormData({
+          email: '',
+          password: '',
+          name: '',
+          confirmPassword: ''
+        });
+        
+        // Switch to login form after a brief delay
+        setTimeout(() => {
+          setIsLogin(true);
+        }, 500);
       }
     } catch (error) {
       console.error('Auth Error:', error);
       
-      // User-friendly error messages
       let errorMessage = 'An error occurred. Please try again.';
       
       switch (error.code) {
@@ -221,11 +290,13 @@ function AuthForm({ onLogin }) {
     });
     // Clear error when user starts typing
     if (error) clearError();
+    if (success) clearSuccess();
   };
 
   const handleSwitchForm = () => {
     setIsSwitching(true);
-    clearError(); // Clear error when switching forms
+    clearError();
+    clearSuccess();
     
     setTimeout(() => {
       setIsLogin(!isLogin);
@@ -249,6 +320,14 @@ function AuthForm({ onLogin }) {
         <ErrorNotification 
           message={error} 
           onClose={clearError} 
+        />
+      )}
+
+      {/* Success Notification */}
+      {success && (
+        <SuccessNotification 
+          message={success} 
+          onClose={clearSuccess} 
         />
       )}
 
