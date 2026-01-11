@@ -205,44 +205,56 @@ function AuthForm({ onLogin }) {
           return;
         }
 
-        // Create user account
-        const userCredential = await createUserWithEmailAndPassword(
-          auth,
-          formData.email,
-          formData.password
-        );
+        // Set flag to prevent auto-login during registration
+        sessionStorage.setItem('isRegistering', 'true');
 
-        // Update profile with display name
-        await updateProfile(userCredential.user, {
-          displayName: formData.name
-        });
+        try {
+          // Create user account
+          const userCredential = await createUserWithEmailAndPassword(
+            auth,
+            formData.email,
+            formData.password
+          );
 
-        // Save additional user data to Firestore
-        await setDoc(doc(db, 'users', userCredential.user.uid), {
-          name: formData.name,
-          email: formData.email,
-          createdAt: new Date().toISOString(),
-          role: 'student'
-        });
+          // Update profile with display name
+          await updateProfile(userCredential.user, {
+            displayName: formData.name
+          });
 
-        // Sign out immediately after registration
-        await signOut(auth);
+          // Save additional user data to Firestore
+          await setDoc(doc(db, 'users', userCredential.user.uid), {
+            name: formData.name,
+            email: formData.email,
+            createdAt: new Date().toISOString(),
+            role: 'student'
+          });
 
-        // Show success message
-        showSuccess('Account created successfully! Please sign in with your credentials.');
-        
-        // Clear form data
-        setFormData({
-          email: '',
-          password: '',
-          name: '',
-          confirmPassword: ''
-        });
-        
-        // Switch to login form after showing success message
-        setTimeout(() => {
-          handleSwitchForm();
-        }, 2000); // Give user time to read the success message
+          // Sign out immediately after registration
+          await signOut(auth);
+
+          // Remove the registration flag
+          sessionStorage.removeItem('isRegistering');
+
+          // Show success message
+          showSuccess('Account created successfully! Please sign in with your credentials.');
+          
+          // Clear form data
+          setFormData({
+            email: '',
+            password: '',
+            name: '',
+            confirmPassword: ''
+          });
+          
+          // Switch to login form after showing success message
+          setTimeout(() => {
+            handleSwitchForm();
+          }, 2000); // Give user time to read the success message
+        } catch (innerError) {
+          // Remove flag on error too
+          sessionStorage.removeItem('isRegistering');
+          throw innerError;
+        }
       }
     } catch (error) {
       console.error('Auth Error:', error);
