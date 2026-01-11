@@ -1,4 +1,4 @@
-// src/components/Dashboard.jsx - UPDATED WITH RESPONSIVE DESIGN
+// src/components/Dashboard.jsx - COMPLETE REVISED VERSION
 import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
@@ -36,7 +36,7 @@ function Dashboard({ user, onNavigate }) {
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
           const entriesData = [];
           querySnapshot.forEach((doc) => {
-            entriesData.push(doc.data());
+            entriesData.push({ id: doc.id, ...doc.data() });
           });
           setEntries(entriesData);
           setLoading(false);
@@ -56,15 +56,24 @@ function Dashboard({ user, onNavigate }) {
   const totalEntries = entries.length;
   const completedEntries = entries.filter(e => e.status === 'completed').length;
   const inProgressEntries = entries.filter(e => e.status === 'in-progress').length;
-  const totalHours = entries.reduce((total, entry) => total + entry.hours, 0);
+  const totalHours = entries.reduce((total, entry) => total + (parseInt(entry.hours) || 0), 0);
   const completionRate = totalEntries > 0 ? Math.round((completedEntries / totalEntries) * 100) : 0;
+
+  // Determine active milestone
+  const getActiveMilestone = (rate) => {
+    if (rate >= 100) return 100;
+    if (rate >= 75) return 75;
+    if (rate >= 50) return 50;
+    if (rate >= 25) return 25;
+    return 0;
+  };
 
   const stats = [
     { 
       id: 1, 
       title: 'Completion Rate', 
       value: `${completionRate}%`, 
-      change: completionRate >= 85 ? '+5%' : '0%', 
+      change: completionRate > 0 ? '+5%' : '0%', 
       icon: <TrendingUp size={24} />,
       color: '#22c55e',
       colorRgb: '34, 197, 94'
@@ -102,23 +111,26 @@ function Dashboard({ user, onNavigate }) {
     { 
       id: 1, 
       title: 'Getting Started', 
-      date: 'First entry added',
+      date: totalEntries > 0 ? `${totalEntries} entries logged` : 'Add your first entry',
       icon: <Zap size={20} />,
-      color: '#f59e0b'
+      color: '#f59e0b',
+      unlocked: totalEntries > 0
     },
     { 
       id: 2, 
       title: 'Consistency Badge', 
-      date: 'Multiple entries logged',
+      date: totalEntries >= 3 ? 'Multiple entries logged' : 'Log 3+ entries',
       icon: <Users size={20} />,
-      color: '#3b82f6'
+      color: '#3b82f6',
+      unlocked: totalEntries >= 3
     },
     { 
       id: 3, 
       title: 'Progress Maker', 
-      date: 'Tasks completed',
+      date: completedEntries > 0 ? `${completedEntries} tasks completed` : 'Complete 1+ task',
       icon: <Calendar size={20} />,
-      color: '#10b981'
+      color: '#10b981',
+      unlocked: completedEntries > 0
     }
   ];
 
@@ -152,6 +164,8 @@ function Dashboard({ user, onNavigate }) {
     );
   }
 
+  const activeMilestone = getActiveMilestone(completionRate);
+
   return (
     <div className="dashboard-container">
       {/* Welcome Section */}
@@ -159,15 +173,33 @@ function Dashboard({ user, onNavigate }) {
         <h1>Welcome back, {user?.name || 'User'}! 👋</h1>
         <p>Track your OJT progress and manage your training activities efficiently.</p>
         
-        <div className="progress-container">
-          <div className="progress-text">
-            <span>Overall Progress</span>
-            <span className="progress-percentage">{completionRate}%</span>
+        {/* Progress Section - REVISED FOR BETTER VISIBILITY */}
+        <div className="progress-section">
+          <div className="progress-header">
+            <h3>Overall Progress</h3>
+            <div className="progress-value">
+              <span className="progress-percentage-large">{completionRate}%</span>
+              <span className="progress-label">Current Rate</span>
+            </div>
           </div>
-          <div 
-            className={`progress-bar ${completionRate === 0 ? 'zero-progress' : ''}`} 
-            style={{ width: `${Math.max(completionRate, 3)}%` }}
-          ></div>
+          
+          <div className="progress-bar-container">
+            <div 
+              className={`progress-bar-fill ${completionRate === 0 ? 'zero-progress' : ''}`} 
+              style={{ width: `${Math.max(completionRate, 3)}%` }}
+            ></div>
+          </div>
+          
+          <div className="progress-milestones">
+            {[0, 25, 50, 75, 100].map((milestone) => (
+              <span 
+                key={milestone}
+                className={`milestone ${activeMilestone >= milestone ? 'active' : ''}`}
+              >
+                {milestone}%
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -233,8 +265,8 @@ function Dashboard({ user, onNavigate }) {
                 <div 
                   className="achievement-icon" 
                   style={{ 
-                    background: `${achievement.color}20`,
-                    color: achievement.color
+                    background: achievement.unlocked ? `${achievement.color}20` : '#F3F4F6',
+                    color: achievement.unlocked ? achievement.color : '#9CA3AF'
                   }}
                 >
                   {achievement.icon}
@@ -243,7 +275,7 @@ function Dashboard({ user, onNavigate }) {
                   <h4 className="achievement-title">{achievement.title}</h4>
                   <p className="achievement-date">{achievement.date}</p>
                 </div>
-                <ChevronRight size={16} color="#9CA3AF" />
+                {achievement.unlocked && <ChevronRight size={16} color="#9CA3AF" />}
               </li>
             ))}
           </ul>
@@ -258,8 +290,8 @@ function Dashboard({ user, onNavigate }) {
         </div>
         {entries.length > 0 ? (
           <div className="achievements-list">
-            {entries.slice(0, 3).map((entry, index) => (
-              <div key={index} className="achievement-item">
+            {entries.slice(0, 3).map((entry) => (
+              <div key={entry.id} className="achievement-item">
                 <div 
                   className="achievement-icon" 
                   style={{ 
