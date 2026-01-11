@@ -1,4 +1,4 @@
-// src/components/OJTEntries.jsx - UPDATED WITH FIRESTORE
+// src/components/OJTEntries.jsx - COMPLETE REVISED VERSION
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
@@ -17,7 +17,8 @@ import {
   ChevronDown,
   User,
   BarChart3,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from 'lucide-react';
 import { db, auth } from '../firebase/config';
 import { 
@@ -28,13 +29,14 @@ import {
   doc, 
   query, 
   where, 
-  getDocs,
   onSnapshot,
-  orderBy
+  orderBy,
+  serverTimestamp
 } from 'firebase/firestore';
 import './OJTEntries.css';
 
 function OJTEntries() {
+  // State management
   const [entries, setEntries] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -46,8 +48,10 @@ function OJTEntries() {
   const [skillInput, setSkillInput] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
   
+  // Form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -60,6 +64,7 @@ function OJTEntries() {
 
   const suggestionsRef = useRef(null);
 
+  // Constants
   const statusOptions = [
     { value: 'pending', label: 'Pending', color: '#f59e0b', icon: <Clock size={14} /> },
     { value: 'in-progress', label: 'In Progress', color: '#3b82f6', icon: <AlertCircle size={14} /> },
@@ -74,172 +79,224 @@ function OJTEntries() {
     'Project Management', 'Data Analysis', 'UI/UX Design', 'API Development'
   ];
 
-  // Get current user and fetch their entries
-  useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged((currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        fetchEntries(currentUser.uid);
-      } else {
-        setUser(null);
-        setEntries([]);
-        setLoading(false);
-      }
-    });
-
-    return () => unsubscribeAuth();
-  }, []);
-
-  // Close suggestions when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
-        setShowSuggestions(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  // ==================== FIREBASE OPERATIONS ====================
 
   // Fetch entries from Firestore
-  const fetchEntries = async (userId) => {
+  useEffect(() => {
+    const user = auth.currentUser;
+    
+    if (!user) {
+      console.log('No user logged in, showing empty state');
+      setLoading(false);
+      setEntries([]);
+      return;
+    }
+
+    console.log('Fetching entries for user:', user.uid);
+    
     try {
       const entriesRef = collection(db, 'ojtEntries');
       const q = query(
         entriesRef, 
-        where('userId', '==', userId),
+        where('userId', '==', user.uid),
         orderBy('date', 'desc')
       );
       
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const entriesData = [];
-        querySnapshot.forEach((doc) => {
-          entriesData.push({
-            id: doc.id,
-            ...doc.data()
+      // Set a timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        if (loading) {
+          console.log('Firestore fetch timeout, using fallback');
+          setLoading(false);
+          loadFromLocalStorage();
+        }
+      }, 5000); // 5 second timeout
+
+      const unsubscribe = onSnapshot(q, 
+        // Success callback
+        (querySnapshot) => {
+          clearTimeout(timeoutId);
+          console.log('Firestore query successful, documents:', querySnapshot.size);
+          
+          const entriesData = [];
+          querySnapshot.forEach((doc) => {
+            entriesData.push({
+              id: doc.id,
+              ...doc.data()
+            });
           });
-        });
-        setEntries(entriesData);
-        setLoading(false);
-      });
+          
+          setEntries(entriesData);
+          setLoading(false);
+          setError(null);
+          
+          // Also save to localStorage as backup
+          if (entriesData.length > 0) {
+            localStorage.setItem(`ojtEntries_${user.uid}`, JSON.stringify(entriesData));
+          }
+        },
+        // Error callback
+        (error) => {
+          clearTimeout(timeoutId);
+          console.error('Firestore error:', error);
+          setError(`Firestore error: ${error.code} - ${error.message}`);
+          setLoading(false);
+          
+          // Fallback to localStorage
+          loadFromLocalStorage();
+        }
+      );
 
-      return unsubscribe;
-    } catch (error) {
-      console.error('Error fetching entries:', error);
-      setLoading(false);
-    }
-  };
-
-  // Stats calculation
-  const totalEntries = entries.length;
-  const completedEntries = entries.filter(e => e.status === 'completed').length;
-  const inProgressEntries = entries.filter(e => e.status === 'in-progress').length;
-  const totalHours = entries.reduce((total, entry) => total + entry.hours, 0);
-  const completionRate = totalEntries > 0 ? Math.round((completedEntries / totalEntries) * 100) : 0;
-
-  // Filter and sort entries
-  const filteredEntries = entries
-    .filter(entry => {
-      const matchesSearch = entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (entry.supervisor && entry.supervisor.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          entry.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
-      const matchesStatus = activeFilter === 'all' || entry.status === activeFilter;
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'date') {
-        return sortOrder === 'asc' 
-          ? new Date(a.date) - new Date(b.date)
-          : new Date(b.date) - new Date(a.date);
-      }
-      if (sortBy === 'title') {
-        return sortOrder === 'asc'
-          ? a.title.localeCompare(b.title)
-          : b.title.localeCompare(a.title);
-      }
-      if (sortBy === 'hours') {
-        return sortOrder === 'asc'
-          ? a.hours - b.hours
-          : b.hours - a.hours;
-      }
-      return 0;
-    });
-
-  // Add new entry to Firestore
-  const addEntry = async (entryData) => {
-    try {
-      if (!user) {
-        alert('You must be logged in to add entries');
-        return;
-      }
-
-      const entryWithUser = {
-        ...entryData,
-        userId: user.uid,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+      return () => {
+        clearTimeout(timeoutId);
+        unsubscribe();
       };
 
-      await addDoc(collection(db, 'ojtEntries'), entryWithUser);
-      return true;
     } catch (error) {
-      console.error('Error adding entry:', error);
-      alert('Error adding entry: ' + error.message);
-      return false;
+      console.error('Error setting up Firestore listener:', error);
+      setLoading(false);
+      loadFromLocalStorage();
+    }
+  }, []);
+
+  // Load entries from localStorage (fallback)
+  const loadFromLocalStorage = () => {
+    const user = auth.currentUser;
+    if (user) {
+      const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
+      if (savedEntries) {
+        console.log('Loaded from localStorage:', JSON.parse(savedEntries).length, 'entries');
+        setEntries(JSON.parse(savedEntries));
+      }
     }
   };
 
-  // Update entry in Firestore
-  const updateEntry = async (entryId, entryData) => {
+  // Save entry to Firestore
+  const saveEntryToFirestore = async (entryData, isUpdate = false) => {
+    const user = auth.currentUser;
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
     try {
-      const entryRef = doc(db, 'ojtEntries', entryId);
-      await updateDoc(entryRef, {
+      const entryWithMetadata = {
         ...entryData,
-        updatedAt: new Date().toISOString()
-      });
+        userId: user.uid,
+        updatedAt: serverTimestamp(),
+        ...(isUpdate ? {} : { createdAt: serverTimestamp() })
+      };
+
+      if (isUpdate && selectedEntry) {
+        // Update existing entry
+        const entryRef = doc(db, 'ojtEntries', selectedEntry.id);
+        await updateDoc(entryRef, entryWithMetadata);
+        console.log('Entry updated in Firestore');
+      } else {
+        // Add new entry
+        await addDoc(collection(db, 'ojtEntries'), entryWithMetadata);
+        console.log('Entry added to Firestore');
+      }
+      
       return true;
     } catch (error) {
-      console.error('Error updating entry:', error);
-      alert('Error updating entry: ' + error.message);
-      return false;
+      console.error('Error saving to Firestore:', error);
+      throw error;
     }
   };
 
-  // Delete entry from Firestore
-  const deleteEntry = async (entryId) => {
-    try {
-      await deleteDoc(doc(db, 'ojtEntries', entryId));
-      return true;
-    } catch (error) {
-      console.error('Error deleting entry:', error);
-      alert('Error deleting entry: ' + error.message);
-      return false;
+  // Save entry to localStorage (fallback)
+  const saveEntryToLocalStorage = (entryData, isUpdate = false) => {
+    const user = auth.currentUser;
+    if (!user) return false;
+
+    const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
+    let currentEntries = savedEntries ? JSON.parse(savedEntries) : [];
+
+    if (isUpdate && selectedEntry) {
+      currentEntries = currentEntries.map(entry => 
+        entry.id === selectedEntry.id ? { ...entryData, id: selectedEntry.id } : entry
+      );
+    } else {
+      const newEntry = {
+        ...entryData,
+        id: currentEntries.length > 0 ? Math.max(...currentEntries.map(e => e.id)) + 1 : 1
+      };
+      currentEntries.push(newEntry);
     }
+
+    localStorage.setItem(`ojtEntries_${user.uid}`, JSON.stringify(currentEntries));
+    setEntries(currentEntries);
+    return true;
   };
+
+  // ==================== FORM HANDLING ====================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    setSaving(true);
+    setError(null);
+
+    const user = auth.currentUser;
     if (!user) {
-      alert('You must be logged in to save entries');
+      setError('Please log in to save entries');
+      setSaving(false);
       return;
     }
 
-    let success = false;
-    
-    if (isEditMode && selectedEntry) {
-      // Update existing entry
-      success = await updateEntry(selectedEntry.id, formData);
-    } else {
-      // Add new entry
-      success = await addEntry(formData);
-    }
-    
-    if (success) {
+    try {
+      // Try Firestore first
+      await saveEntryToFirestore(formData, isEditMode);
       resetForm();
       setIsModalOpen(false);
+    } catch (firestoreError) {
+      console.log('Firestore save failed, falling back to localStorage:', firestoreError);
+      
+      // Fallback to localStorage
+      const localStorageSuccess = saveEntryToLocalStorage(formData, isEditMode);
+      
+      if (localStorageSuccess) {
+        resetForm();
+        setIsModalOpen(false);
+        setError('Entry saved locally (Firestore unavailable)');
+      } else {
+        setError('Failed to save entry. Please try again.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this entry?')) return;
+
+    try {
+      // Try Firestore first
+      await deleteDoc(doc(db, 'ojtEntries', id));
+      
+      // Also remove from localStorage
+      const user = auth.currentUser;
+      if (user) {
+        const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
+        if (savedEntries) {
+          const currentEntries = JSON.parse(savedEntries);
+          const updatedEntries = currentEntries.filter(entry => entry.id !== id);
+          localStorage.setItem(`ojtEntries_${user.uid}`, JSON.stringify(updatedEntries));
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting from Firestore:', error);
+      
+      // Fallback to localStorage
+      const user = auth.currentUser;
+      if (user) {
+        const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
+        if (savedEntries) {
+          const currentEntries = JSON.parse(savedEntries);
+          const updatedEntries = currentEntries.filter(entry => entry.id !== id);
+          localStorage.setItem(`ojtEntries_${user.uid}`, JSON.stringify(updatedEntries));
+          setEntries(updatedEntries);
+        }
+      }
+      alert('Deleted locally (Firestore unavailable)');
     }
   };
 
@@ -256,12 +313,6 @@ function OJTEntries() {
     });
     setIsEditMode(true);
     setIsModalOpen(true);
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this entry?')) {
-      await deleteEntry(id);
-    }
   };
 
   const handleView = (entry) => {
@@ -285,6 +336,8 @@ function OJTEntries() {
     setIsEditMode(false);
   };
 
+  // ==================== HELPER FUNCTIONS ====================
+
   const getStatusColor = (status) => {
     const statusOption = statusOptions.find(opt => opt.value === status);
     return statusOption ? statusOption.color : '#64748b';
@@ -299,7 +352,6 @@ function OJTEntries() {
     setActiveFilter(status);
   };
 
-  // Add skill function
   const addSkill = (skill) => {
     const trimmedSkill = skill.trim();
     if (trimmedSkill && !formData.skills.includes(trimmedSkill)) {
@@ -312,7 +364,6 @@ function OJTEntries() {
     setShowSuggestions(false);
   };
 
-  // Remove skill function
   const removeSkill = (skill) => {
     setFormData({
       ...formData,
@@ -320,12 +371,55 @@ function OJTEntries() {
     });
   };
 
+  // ==================== DATA PROCESSING ====================
+
+  // Stats calculation
+  const totalEntries = entries.length;
+  const completedEntries = entries.filter(e => e.status === 'completed').length;
+  const inProgressEntries = entries.filter(e => e.status === 'in-progress').length;
+  const totalHours = entries.reduce((total, entry) => total + (entry.hours || 0), 0);
+  const completionRate = totalEntries > 0 ? Math.round((completedEntries / totalEntries) * 100) : 0;
+
+  // Filter and sort entries
+  const filteredEntries = entries
+    .filter(entry => {
+      const matchesSearch = entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          entry.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (entry.supervisor && entry.supervisor.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                          (entry.skills && entry.skills.some(skill => 
+                            skill.toLowerCase().includes(searchTerm.toLowerCase())
+                          ));
+      const matchesStatus = activeFilter === 'all' || entry.status === activeFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'date') {
+        return sortOrder === 'asc' 
+          ? new Date(a.date || 0) - new Date(b.date || 0)
+          : new Date(b.date || 0) - new Date(a.date || 0);
+      }
+      if (sortBy === 'title') {
+        return sortOrder === 'asc'
+          ? a.title.localeCompare(b.title)
+          : b.title.localeCompare(a.title);
+      }
+      if (sortBy === 'hours') {
+        return sortOrder === 'asc'
+          ? (a.hours || 0) - (b.hours || 0)
+          : (b.hours || 0) - (a.hours || 0);
+      }
+      return 0;
+    });
+
+  // ==================== RENDER FUNCTIONS ====================
+
   if (loading) {
     return (
       <div className="loading-screen">
         <div className="loading-content">
           <div className="loading-spinner"></div>
           <h2>Loading entries...</h2>
+          {error && <p style={{ color: '#ef4444', marginTop: '10px' }}>{error}</p>}
         </div>
       </div>
     );
@@ -333,6 +427,35 @@ function OJTEntries() {
 
   return (
     <div className="ojt-entries-container">
+      {/* Error Banner */}
+      {error && (
+        <div style={{
+          background: '#fef2f2',
+          border: '1px solid #fecaca',
+          color: '#dc2626',
+          padding: '12px 16px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span>{error}</span>
+          <button 
+            onClick={() => setError(null)}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: '#dc2626',
+              cursor: 'pointer',
+              padding: '4px'
+            }}
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="entries-header">
         <div className="header-content">
@@ -341,7 +464,7 @@ function OJTEntries() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Grid */}
       <div className="stats-grid">
         <div className="stat-card primary">
           <div className="stat-icon">
@@ -493,15 +616,15 @@ function OJTEntries() {
               <div className="entry-details">
                 <div className="detail-item">
                   <Calendar size={14} />
-                  <span>{new Date(entry.date).toLocaleDateString('en-US', { 
+                  <span>{entry.date ? new Date(entry.date).toLocaleDateString('en-US', { 
                     year: 'numeric', 
                     month: 'short', 
                     day: 'numeric' 
-                  })}</span>
+                  }) : 'No date'}</span>
                 </div>
                 <div className="detail-item">
                   <Clock size={14} />
-                  <span>{entry.hours} {entry.hours === 1 ? 'hour' : 'hours'}</span>
+                  <span>{entry.hours || 0} {entry.hours === 1 ? 'hour' : 'hours'}</span>
                 </div>
                 {entry.supervisor && (
                   <div className="detail-item">
@@ -541,9 +664,10 @@ function OJTEntries() {
           <button 
             className="add-first-entry-btn"
             onClick={() => setIsModalOpen(true)}
+            disabled={saving}
           >
             <Plus size={18} />
-            Add Your First Entry
+            {saving ? 'Saving...' : 'Add Your First Entry'}
           </button>
         </div>
       )}
@@ -556,15 +680,18 @@ function OJTEntries() {
           setIsModalOpen(true);
         }}
         title="Add new OJT entry"
+        disabled={saving}
       >
-        <Plus size={24} />
+        {saving ? <Loader2 size={24} className="spin" /> : <Plus size={24} />}
       </button>
 
       {/* Modal for Add/Edit */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => {
-          setIsModalOpen(false);
-          resetForm();
+          if (!saving) {
+            setIsModalOpen(false);
+            resetForm();
+          }
         }}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -575,10 +702,13 @@ function OJTEntries() {
               <button 
                 className="close-btn" 
                 onClick={() => {
-                  setIsModalOpen(false);
-                  resetForm();
+                  if (!saving) {
+                    setIsModalOpen(false);
+                    resetForm();
+                  }
                 }}
                 title="Close"
+                disabled={saving}
               >
                 <X size={20} />
               </button>
@@ -593,6 +723,7 @@ function OJTEntries() {
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   placeholder="What did you work on?"
                   required
+                  disabled={saving}
                 />
               </div>
               
@@ -604,6 +735,7 @@ function OJTEntries() {
                   placeholder="Describe your OJT activity, tasks completed, and what you learned..."
                   rows="4"
                   required
+                  disabled={saving}
                 />
               </div>
               
@@ -615,6 +747,7 @@ function OJTEntries() {
                     value={formData.date}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
                     required
+                    disabled={saving}
                   />
                 </div>
                 
@@ -628,6 +761,7 @@ function OJTEntries() {
                     max="24"
                     placeholder="Hours spent"
                     required
+                    disabled={saving}
                   />
                 </div>
               </div>
@@ -640,11 +774,14 @@ function OJTEntries() {
                       key={option.value}
                       type="button"
                       className={`status-btn ${formData.status === option.value ? 'active' : ''}`}
-                      onClick={() => setFormData({...formData, status: option.value})}
+                      onClick={() => !saving && setFormData({...formData, status: option.value})}
                       style={{ 
                         borderColor: option.color,
-                        background: formData.status === option.value ? option.color : 'white'
+                        background: formData.status === option.value ? option.color : 'white',
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        opacity: saving ? 0.7 : 1
                       }}
+                      disabled={saving}
                     >
                       {option.icon}
                       {option.label}
@@ -660,6 +797,7 @@ function OJTEntries() {
                   value={formData.supervisor}
                   onChange={(e) => setFormData({...formData, supervisor: e.target.value})}
                   placeholder="Supervisor's name"
+                  disabled={saving}
                 />
               </div>
               
@@ -675,7 +813,8 @@ function OJTEntries() {
                       <button 
                         type="button"
                         className="remove-skill-btn"
-                        onClick={() => removeSkill(skill)}
+                        onClick={() => !saving && removeSkill(skill)}
+                        disabled={saving}
                       >
                         <X size={12} />
                       </button>
@@ -693,18 +832,19 @@ function OJTEntries() {
                       setShowSuggestions(true);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && skillInput.trim()) {
+                      if (e.key === 'Enter' && skillInput.trim() && !saving) {
                         e.preventDefault();
                         addSkill(skillInput);
                       }
                     }}
-                    onFocus={() => setShowSuggestions(true)}
+                    onFocus={() => !saving && setShowSuggestions(true)}
                     placeholder="Type a skill and press Enter"
                     className="skills-input"
+                    disabled={saving}
                   />
                   
                   {/* Skill Suggestions */}
-                  {showSuggestions && skillInput && (
+                  {showSuggestions && skillInput && !saving && (
                     <div className="skills-suggestions">
                       {skillOptions
                         .filter(skill => 
@@ -716,7 +856,8 @@ function OJTEntries() {
                           <div
                             key={index}
                             className="suggestion-item"
-                            onClick={() => addSkill(skill)}
+                            onClick={() => !saving && addSkill(skill)}
+                            style={{ cursor: saving ? 'not-allowed' : 'pointer' }}
                           >
                             {skill}
                           </div>
@@ -725,7 +866,8 @@ function OJTEntries() {
                       {skillInput.trim() && !skillOptions.includes(skillInput.trim()) && (
                         <div
                           className="suggestion-item add-new"
-                          onClick={() => addSkill(skillInput)}
+                          onClick={() => !saving && addSkill(skillInput)}
+                          style={{ cursor: saving ? 'not-allowed' : 'pointer' }}
                         >
                           <Plus size={12} />
                           Add "{skillInput.trim()}"
@@ -744,11 +886,14 @@ function OJTEntries() {
                       type="button"
                       className={`skill-btn ${formData.skills.includes(skill) ? 'selected' : ''}`}
                       onClick={() => {
-                        const newSkills = formData.skills.includes(skill)
-                          ? formData.skills.filter(s => s !== skill)
-                          : [...formData.skills, skill];
-                        setFormData({...formData, skills: newSkills});
+                        if (!saving) {
+                          const newSkills = formData.skills.includes(skill)
+                            ? formData.skills.filter(s => s !== skill)
+                            : [...formData.skills, skill];
+                          setFormData({...formData, skills: newSkills});
+                        }
                       }}
+                      disabled={saving}
                     >
                       {skill}
                       {formData.skills.includes(skill) && <CheckCircle size={12} />}
@@ -768,20 +913,39 @@ function OJTEntries() {
                   type="button" 
                   className="cancel-btn"
                   onClick={() => {
-                    setIsModalOpen(false);
-                    resetForm();
+                    if (!saving) {
+                      setIsModalOpen(false);
+                      resetForm();
+                    }
                   }}
+                  disabled={saving}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn">
-                  {isEditMode ? 'Update Entry' : 'Save Entry'}
+                <button type="submit" className="submit-btn" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 size={16} className="spin" style={{ marginRight: '8px' }} />
+                      Saving...
+                    </>
+                  ) : isEditMode ? 'Update Entry' : 'Save Entry'}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        .spin {
+          animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
