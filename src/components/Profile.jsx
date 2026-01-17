@@ -1,5 +1,5 @@
-// src/components/Profile.jsx - COMPLETE WITH PHOTO UPLOAD
-import React, { useState, useEffect } from 'react';
+// src/components/Profile.jsx - OPTIMIZED UPLOAD WITH EDIT MODE CONTROL
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, 
   Camera, 
@@ -11,12 +11,13 @@ import {
   Calendar,
   Upload,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { auth, storage, db } from '../firebase/config';
 import { updateProfile, updatePassword, updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import './Profile.css';
 
 function Profile({ user, onPhotoUpdate }) {
@@ -43,6 +44,7 @@ function Profile({ user, onPhotoUpdate }) {
   });
 
   const [errors, setErrors] = useState({});
+  const fileInputRef = useRef(null);
 
   // Load user data from Firestore
   useEffect(() => {
@@ -164,16 +166,69 @@ function Profile({ user, onPhotoUpdate }) {
     }
   };
 
+  const compressImage = async (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate the new dimensions
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Convert to compressed Blob
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                resolve(new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                }));
+              } else {
+                reject(new Error('Canvas to Blob conversion failed'));
+              }
+            },
+            'image/jpeg',
+            quality
+          );
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
+  };
+
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     // Validate file type and size
-    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+    const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
     const maxSize = 5 * 1024 * 1024; // 5MB
 
     if (!validTypes.includes(file.type)) {
-      showNotification('Please upload a valid image (JPEG, PNG, GIF)', 'error');
+      showNotification('Please upload a valid image (JPEG, PNG, GIF, WebP)', 'error');
       return;
     }
 
@@ -183,42 +238,74 @@ function Profile({ user, onPhotoUpdate }) {
     }
 
     setUploadingPhoto(true);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPhotoPreview(reader.result);
-    };
-    reader.readAsDataURL(file);
-
+    
     try {
-      // Upload to Firebase Storage
-      const storageRef = ref(storage, `profile-photos/${user.uid}/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const photoURL = await getDownloadURL(storageRef);
+      // Show preview immediately
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
 
-      // Update user profile in Firebase Auth
-      await updateProfile(auth.currentUser, {
-        photoURL: photoURL
-      });
-
-      // Update in Firestore
-      await updateDoc(doc(db, 'users', user.uid), {
-        photoURL: photoURL,
-        updatedAt: new Date().toISOString()
-      });
-
-      // Update photo preview
-      setPhotoPreview(photoURL);
+      // Compress image before upload
+      const compressedFile = await compressImage(file);
       
-      // Notify parent component to update user state
-      if (onPhotoUpdate) {
-        onPhotoUpdate(photoURL);
-      }
+      // Create a unique filename
+      const timestamp = Date.now();
+      const fileName = `${user.uid}_${timestamp}.jpg`;
+      const storageRef = ref(storage, `profile-photos/${user.uid}/${fileName}`);
 
-      showNotification('Profile photo updated successfully!', 'success');
+      // Use uploadBytesResumable for better control
+      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          // Optional: You can show progress here if needed
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          console.log(`Upload is ${progress}% done`);
+        },
+        (error) => {
+          console.error('Upload error:', error);
+          showNotification('Failed to upload photo. Please try again.', 'error');
+          setUploadingPhoto(false);
+        },
+        async () => {
+          try {
+            // Get download URL
+            const photoURL = await getDownloadURL(uploadTask.snapshot.ref);
+
+            // Update user profile in Firebase Auth
+            await updateProfile(auth.currentUser, {
+              photoURL: photoURL
+            });
+
+            // Update in Firestore
+            await updateDoc(doc(db, 'users', user.uid), {
+              photoURL: photoURL,
+              updatedAt: new Date().toISOString()
+            });
+
+            // Update photo preview
+            setPhotoPreview(photoURL);
+            
+            // Notify parent component to update user state
+            if (onPhotoUpdate) {
+              onPhotoUpdate(photoURL);
+            }
+
+            showNotification('Profile photo updated successfully!', 'success');
+          } catch (error) {
+            console.error('Error updating profile:', error);
+            showNotification('Failed to save profile changes. Please try again.', 'error');
+          } finally {
+            setUploadingPhoto(false);
+          }
+        }
+      );
     } catch (error) {
-      console.error('Error uploading photo:', error);
-      showNotification('Failed to upload photo. Please try again.', 'error');
-    } finally {
+      console.error('Error processing image:', error);
+      showNotification('Failed to process image. Please try again.', 'error');
       setUploadingPhoto(false);
     }
   };
@@ -256,6 +343,11 @@ function Profile({ user, onPhotoUpdate }) {
         await updateProfile(currentUser, {
           photoURL: photoPreview
         });
+        
+        // Notify parent component
+        if (onPhotoUpdate) {
+          onPhotoUpdate(photoPreview);
+        }
       }
 
       showNotification('Profile updated successfully!', 'success');
@@ -328,6 +420,21 @@ function Profile({ user, onPhotoUpdate }) {
     return 'U';
   };
 
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setErrors({});
+  };
+
+  const handleUploadClick = () => {
+    if (isEditing && !uploadingPhoto) {
+      fileInputRef.current?.click();
+    }
+  };
+
   return (
     <div className="profile-container">
       {/* Notification */}
@@ -357,18 +464,32 @@ function Profile({ user, onPhotoUpdate }) {
                 {getInitials()}
               </div>
             )}
-            <label className="upload-photo-btn" htmlFor="photo-upload">
-              <Camera size={16} />
+            
+            {/* Camera Icon - Only enabled when editing */}
+            <button
+              className={`upload-photo-btn ${!isEditing || uploadingPhoto ? 'disabled' : ''}`}
+              onClick={handleUploadClick}
+              disabled={!isEditing || uploadingPhoto}
+              title={isEditing ? "Change Profile Photo" : "Click Edit Profile first"}
+            >
+              {uploadingPhoto ? (
+                <Loader2 size={16} className="spinning" />
+              ) : (
+                <Camera size={16} />
+              )}
               <span>Change Photo</span>
-              <input
-                id="photo-upload"
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                disabled={uploadingPhoto}
-                hidden
-              />
-            </label>
+            </button>
+            
+            <input
+              ref={fileInputRef}
+              id="photo-upload"
+              type="file"
+              accept="image/*"
+              onChange={handlePhotoUpload}
+              disabled={!isEditing || uploadingPhoto}
+              hidden
+            />
+            
             {uploadingPhoto && (
               <div className="uploading-overlay">
                 <div className="uploading-spinner"></div>
@@ -389,7 +510,7 @@ function Profile({ user, onPhotoUpdate }) {
         {!isEditing && !isPasswordEditing && (
           <button 
             className="edit-profile-btn"
-            onClick={() => setIsEditing(true)}
+            onClick={handleEditClick}
           >
             Edit Profile
           </button>
@@ -421,10 +542,7 @@ function Profile({ user, onPhotoUpdate }) {
                 </button>
                 <button 
                   className="cancel-btn"
-                  onClick={() => {
-                    setIsEditing(false);
-                    setErrors({});
-                  }}
+                  onClick={handleCancelEdit}
                   disabled={isLoading}
                 >
                   <X size={16} />
@@ -450,6 +568,7 @@ function Profile({ user, onPhotoUpdate }) {
                       onChange={handleInputChange}
                       className={`form-input ${errors.name ? 'error' : ''}`}
                       placeholder="Enter your full name"
+                      disabled={isLoading}
                     />
                     {errors.name && (
                       <span className="error-message">{errors.name}</span>
@@ -474,6 +593,7 @@ function Profile({ user, onPhotoUpdate }) {
                       onChange={handleInputChange}
                       className={`form-input ${errors.email ? 'error' : ''}`}
                       placeholder="Enter your email"
+                      disabled={isLoading}
                     />
                     {errors.email && (
                       <span className="error-message">{errors.email}</span>
@@ -500,6 +620,7 @@ function Profile({ user, onPhotoUpdate }) {
                       onChange={handleInputChange}
                       className={`form-input ${errors.phone ? 'error' : ''}`}
                       placeholder="Enter your phone number"
+                      disabled={isLoading}
                     />
                     {errors.phone && (
                       <span className="error-message">{errors.phone}</span>
@@ -530,6 +651,7 @@ function Profile({ user, onPhotoUpdate }) {
                     className="form-textarea"
                     placeholder="Tell us about yourself"
                     rows="3"
+                    disabled={isLoading}
                   />
                 ) : (
                   <div className="form-value bio-text">{userData.bio}</div>
@@ -546,6 +668,7 @@ function Profile({ user, onPhotoUpdate }) {
                     value={userData.department}
                     onChange={handleInputChange}
                     className="form-select"
+                    disabled={isLoading}
                   >
                     <option value="Computer Science">Computer Science</option>
                     <option value="Information Technology">Information Technology</option>
@@ -568,6 +691,7 @@ function Profile({ user, onPhotoUpdate }) {
                     onChange={handleInputChange}
                     className="form-input"
                     placeholder="Enter student ID"
+                    disabled={isLoading}
                   />
                 ) : (
                   <div className="form-value">{userData.studentId || 'Not set'}</div>
@@ -606,6 +730,7 @@ function Profile({ user, onPhotoUpdate }) {
                     onChange={handlePasswordChange}
                     className={`form-input ${errors.currentPassword ? 'error' : ''}`}
                     placeholder="Enter current password"
+                    disabled={isLoading}
                   />
                   {errors.currentPassword && (
                     <span className="error-message">{errors.currentPassword}</span>
@@ -623,6 +748,7 @@ function Profile({ user, onPhotoUpdate }) {
                     onChange={handlePasswordChange}
                     className={`form-input ${errors.newPassword ? 'error' : ''}`}
                     placeholder="Enter new password"
+                    disabled={isLoading}
                   />
                   {errors.newPassword && (
                     <span className="error-message">{errors.newPassword}</span>
@@ -638,6 +764,7 @@ function Profile({ user, onPhotoUpdate }) {
                     onChange={handlePasswordChange}
                     className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
                     placeholder="Confirm new password"
+                    disabled={isLoading}
                   />
                   {errors.confirmPassword && (
                     <span className="error-message">{errors.confirmPassword}</span>

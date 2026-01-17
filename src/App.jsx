@@ -1,4 +1,4 @@
-// src/App.jsx - UPDATED WITH PHOTOURL SUPPORT
+// src/App.jsx - COMPLETE
 import { useState, useEffect } from 'react';
 import './App.css';
 import AuthForm from './components/AuthForm';
@@ -20,11 +20,9 @@ function App() {
   
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      // Check if we're currently registering a new user
       const isRegistering = sessionStorage.getItem('isRegistering') === 'true';
       
       if (firebaseUser && !isRegistering) {
-        // Only log in if not in registration process
         const userData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
@@ -37,7 +35,6 @@ function App() {
         localStorage.setItem('user', JSON.stringify(userData));
         localStorage.setItem('isAuthenticated', 'true');
       } else {
-        // User is logged out or in registration process
         setUser(null);
         setIsAuthenticated(false);
         localStorage.removeItem('user');
