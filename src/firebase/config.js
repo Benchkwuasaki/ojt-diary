@@ -4,7 +4,6 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyAO1ZGZvXZ-l9DYlKgWR-d3BSI3gsOMEoM",
   authDomain: "ojt-diary.firebaseapp.com",
@@ -15,16 +14,10 @@ const firebaseConfig = {
   measurementId: "G-D6F5M2E4YV"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firebase Authentication
 export const auth = getAuth(app);
-
-// Initialize Cloud Firestore
 export const db = getFirestore(app);
-
-// Initialize Firebase Storage
 export const storage = getStorage(app);
 
 export default app;

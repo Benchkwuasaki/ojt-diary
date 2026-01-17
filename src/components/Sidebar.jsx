@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - COMPLETE WITH PROFILE IMAGE SUPPORT
+// src/components/Sidebar.jsx - COMPLETE WITH REAL-TIME PROFILE UPDATES
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -36,7 +36,6 @@ function Sidebar({
     const checkMobile = () => {
       setIsMobile(window.innerWidth <= 768);
       if (window.innerWidth > 768) {
-        // Close mobile menu on larger screens
         if (isMobileMenuOpen) {
           toggleMobileMenu();
         }
@@ -81,7 +80,6 @@ function Sidebar({
     }
   };
 
-  // Get user initials for avatar fallback
   const getUserInitials = () => {
     if (user?.name) {
       return user.name.charAt(0).toUpperCase();
@@ -94,7 +92,6 @@ function Sidebar({
 
   return (
     <>
-      {/* Mobile Overlay */}
       {isMobileMenuOpen && isMobile && (
         <div 
           className="sidebar-overlay"
@@ -102,7 +99,6 @@ function Sidebar({
         />
       )}
 
-      {/* Mobile Menu Button */}
       {isMobile && !isMobileMenuOpen && (
         <button 
           className="mobile-menu-button"
@@ -112,7 +108,6 @@ function Sidebar({
         </button>
       )}
 
-      {/* Sidebar */}
       <div 
         className={`sidebar-container ${isCollapsed ? 'collapsed' : ''} ${isMobileMenuOpen ? 'mobile-open' : ''}`}
         style={{
@@ -120,14 +115,12 @@ function Sidebar({
           transition: 'transform 0.3s ease',
         }}
       >
-        {/* Sidebar Header */}
         <div className="sidebar-header">
           <div className="sidebar-logo">
             <div className="logo-container">
               <img src={logo} alt="OJT Diary Logo" />
             </div>
             
-            {/* Desktop Toggle Button - NOW POSITIONED OUTSIDE */}
             {!isMobile && (
               <button 
                 className="sidebar-toggle"
@@ -148,9 +141,18 @@ function Sidebar({
                     src={user.photoURL} 
                     alt="Profile" 
                     className="user-avatar-img"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextElementSibling?.style.display = 'flex';
+                    }}
                   />
                 ) : (
                   <div className="user-avatar-initials">
+                    {getUserInitials()}
+                  </div>
+                )}
+                {user.photoURL && (
+                  <div className="user-avatar-initials" style={{ display: 'none' }}>
                     {getUserInitials()}
                   </div>
                 )}
@@ -164,7 +166,6 @@ function Sidebar({
           )}
         </div>
 
-        {/* Mobile Close Button */}
         {isMobile && (
           <button 
             className="mobile-close-button"
@@ -174,7 +175,6 @@ function Sidebar({
           </button>
         )}
 
-        {/* Navigation Menu */}
         <nav className="sidebar-nav">
           <ul>
             {menuItems.map((item) => (
@@ -207,7 +207,6 @@ function Sidebar({
           </ul>
         </nav>
 
-        {/* Logout Section */}
         <div className="sidebar-footer">
           <button 
             className="logout-button"
