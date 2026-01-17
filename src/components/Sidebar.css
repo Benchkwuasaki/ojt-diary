@@ -503,3 +503,91 @@
 .nav-item:nth-child(6) { animation-delay: 0.35s; }
 .nav-item:nth-child(7) { animation-delay: 0.4s; }
 .nav-item:nth-child(8) { animation-delay: 0.45s; }
+/* Add these styles to the existing Sidebar.css file */
+
+/* Profile image styling for sidebar */
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
+  font-size: 16px;
+  flex-shrink: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Gradient background for initials when no image */
+.user-avatar:not(:has(img)) {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+}
+
+/* Style for the profile image */
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+/* Style for initials when no image */
+.user-avatar-initials {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  border-radius: 12px;
+}
+
+/* Ensure the user info section doesn't break layout */
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: opacity 0.2s ease;
+  overflow: hidden;
+}
+
+.user-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-details h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 4px 0;
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-details p {
+  font-size: 12px;
+  color: #9CA3AF;
+  margin: 0 0 8px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-role {
+  font-size: 11px;
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  padding: 3px 10px;
+  border-radius: 20px;
+  display: inline-block;
+  font-weight: 500;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}

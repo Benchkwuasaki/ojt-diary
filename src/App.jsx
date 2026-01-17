@@ -1,4 +1,4 @@
-// src/App.jsx - UPDATED TO REMOVE STATIC ENTRIES
+// src/App.jsx - UPDATED WITH PHOTOURL SUPPORT
 import { useState, useEffect } from 'react';
 import './App.css';
 import AuthForm from './components/AuthForm';
@@ -8,7 +8,7 @@ import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
 import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
-import Profile from './components/Profile'; // Add this import
+import Profile from './components/Profile';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -28,7 +28,8 @@ function App() {
         const userData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
-          name: firebaseUser.displayName || firebaseUser.email.split('@')[0]
+          name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+          photoURL: firebaseUser.photoURL || null
         };
         
         setUser(userData);
@@ -75,6 +76,15 @@ function App() {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  // Function to update user photoURL
+  const updateUserPhoto = (photoURL) => {
+    if (user) {
+      const updatedUser = { ...user, photoURL };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'ojt-entries':
@@ -87,8 +97,8 @@ function App() {
         return <div className="coming-soon">Progress - Coming Soon</div>;
       case 'notifications':
         return <div className="coming-soon">Notifications - Coming Soon</div>;
-      case 'profile': // Update this case
-      return <Profile user={user} />;
+      case 'profile':
+        return <Profile user={user} onPhotoUpdate={updateUserPhoto} />;
       case 'settings':
         return <div className="coming-soon">Settings - Coming Soon</div>;
       case 'dashboard':

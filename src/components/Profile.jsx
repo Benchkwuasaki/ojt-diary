@@ -1,4 +1,4 @@
-// src/components/Profile.jsx
+// src/components/Profile.jsx - COMPLETE WITH PHOTO UPLOAD
 import React, { useState, useEffect } from 'react';
 import { 
   User, 
@@ -19,7 +19,7 @@ import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import './Profile.css';
 
-function Profile({ user }) {
+function Profile({ user, onPhotoUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -76,6 +76,11 @@ function Profile({ user }) {
               email: user.email || '',
               joinDate: '2024'
             }));
+            
+            // Set photo preview from auth user
+            if (user.photoURL) {
+              setPhotoPreview(user.photoURL);
+            }
           }
         } catch (error) {
           console.error('Error loading user data:', error);
@@ -190,15 +195,24 @@ function Profile({ user }) {
       await uploadBytes(storageRef, file);
       const photoURL = await getDownloadURL(storageRef);
 
-      // Update user profile
+      // Update user profile in Firebase Auth
       await updateProfile(auth.currentUser, {
         photoURL: photoURL
       });
 
       // Update in Firestore
       await updateDoc(doc(db, 'users', user.uid), {
-        photoURL: photoURL
+        photoURL: photoURL,
+        updatedAt: new Date().toISOString()
       });
+
+      // Update photo preview
+      setPhotoPreview(photoURL);
+      
+      // Notify parent component to update user state
+      if (onPhotoUpdate) {
+        onPhotoUpdate(photoURL);
+      }
 
       showNotification('Profile photo updated successfully!', 'success');
     } catch (error) {
@@ -236,6 +250,13 @@ function Profile({ user }) {
         bio: userData.bio,
         updatedAt: new Date().toISOString()
       });
+
+      // Update photoURL if it was changed separately
+      if (photoPreview && photoPreview.startsWith('https://')) {
+        await updateProfile(currentUser, {
+          photoURL: photoPreview
+        });
+      }
 
       showNotification('Profile updated successfully!', 'success');
       setIsEditing(false);

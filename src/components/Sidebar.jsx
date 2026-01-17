@@ -1,4 +1,4 @@
-// src/components/Sidebar.jsx - WITH LOGO CENTERING
+// src/components/Sidebar.jsx - COMPLETE WITH PROFILE IMAGE SUPPORT
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -18,7 +18,7 @@ import {
 import './Sidebar.css';
 import { auth } from '../firebase/config';
 import { signOut } from 'firebase/auth';
-import logo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png'; // Adjust path as needed
+import logo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png';
 
 function Sidebar({ 
   user, 
@@ -81,6 +81,17 @@ function Sidebar({
     }
   };
 
+  // Get user initials for avatar fallback
+  const getUserInitials = () => {
+    if (user?.name) {
+      return user.name.charAt(0).toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return 'U';
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -132,7 +143,17 @@ function Sidebar({
           {!isCollapsed && user && (
             <div className="user-info">
               <div className="user-avatar">
-                {user.name?.charAt(0).toUpperCase() || 'U'}
+                {user.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt="Profile" 
+                    className="user-avatar-img"
+                  />
+                ) : (
+                  <div className="user-avatar-initials">
+                    {getUserInitials()}
+                  </div>
+                )}
               </div>
               <div className="user-details">
                 <h4>{user.name || 'User'}</h4>
