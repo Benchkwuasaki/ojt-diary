@@ -1,4 +1,4 @@
-// src/App.jsx - COMPLETE WITH REAL-TIME USER UPDATES
+// src/App.jsx - COMPLETE
 import { useState, useEffect } from 'react';
 import './App.css';
 import AuthForm from './components/AuthForm';
@@ -6,9 +6,8 @@ import Sidebar from './components/Sidebar';
 import OJTEntries from './components/OJTEntries';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
-import { auth, db } from './firebase/config';
+import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, onSnapshot } from 'firebase/firestore';
 import Profile from './components/Profile';
 
 function App() {
@@ -20,42 +19,21 @@ function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   useEffect(() => {
-    let unsubscribeFirestore = () => {};
-
-    const unsubscribeAuth = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       const isRegistering = sessionStorage.getItem('isRegistering') === 'true';
       
       if (firebaseUser && !isRegistering) {
-        // Create initial user object from Firebase Auth
-        const initialUser = {
+        const userData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
           photoURL: firebaseUser.photoURL || null
         };
         
-        // Set up real-time listener to Firestore user document
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
-          if (docSnap.exists()) {
-            const firestoreData = docSnap.data();
-            // Merge Firebase Auth data with Firestore data
-            const updatedUser = {
-              ...initialUser,
-              ...firestoreData,
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              photoURL: firestoreData.photoURL || initialUser.photoURL
-            };
-            setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-          } else {
-            setUser(initialUser);
-            localStorage.setItem('user', JSON.stringify(initialUser));
-          }
-        });
-
+        setUser(userData);
         setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('isAuthenticated', 'true');
       } else {
         setUser(null);
         setIsAuthenticated(false);
@@ -65,11 +43,7 @@ function App() {
       setLoading(false);
     });
 
-    // Cleanup function
-    return () => {
-      unsubscribeAuth();
-      unsubscribeFirestore();
-    };
+    return () => unsubscribe();
   }, []);
 
   const handleLogin = (userData) => {
@@ -82,11 +56,6 @@ function App() {
     setIsAuthenticated(false);
     setActiveSection('dashboard');
     setIsMobileMenuOpen(false);
-  };
-
-  const handleUserUpdate = (updatedUser) => {
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   const handleNavClick = (section) => {
@@ -104,6 +73,15 @@ function App() {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  // Function to update user photoURL
+  const updateUserPhoto = (photoURL) => {
+    if (user) {
+      const updatedUser = { ...user, photoURL };
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    }
+  };
+
   const renderContent = () => {
     switch (activeSection) {
       case 'ojt-entries':
@@ -117,7 +95,7 @@ function App() {
       case 'notifications':
         return <div className="coming-soon">Notifications - Coming Soon</div>;
       case 'profile':
-        return <Profile user={user} onUserUpdate={handleUserUpdate} />;
+        return <Profile user={user} onPhotoUpdate={updateUserPhoto} />;
       case 'settings':
         return <div className="coming-soon">Settings - Coming Soon</div>;
       case 'dashboard':

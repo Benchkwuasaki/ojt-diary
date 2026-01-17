@@ -1,4 +1,4 @@
-// src/components/AuthForm.jsx - COMPLETE REGISTRATION FLOW
+// src/components/AuthForm.jsx - FIXED REGISTRATION FLOW
 import { useState, useEffect } from 'react';
 import './AuthForm.css';
 import { 
@@ -142,11 +142,13 @@ function AuthForm({ onLogin }) {
 
   const showError = (errorMessage) => {
     setError(errorMessage);
+    // Clear success message if showing
     if (success) setSuccess(null);
   };
 
   const showSuccess = (successMessage) => {
     setSuccess(successMessage);
+    // Clear error message if showing
     if (error) setError(null);
   };
 
@@ -176,8 +178,7 @@ function AuthForm({ onLogin }) {
         const user = {
           uid: userCredential.user.uid,
           email: userCredential.user.email,
-          name: userCredential.user.displayName || formData.email.split('@')[0],
-          photoURL: userCredential.user.photoURL || null
+          name: userCredential.user.displayName || formData.email.split('@')[0]
         };
 
         // Save to localStorage
@@ -223,9 +224,7 @@ function AuthForm({ onLogin }) {
           // Save additional user data to Firestore
           await setDoc(doc(db, 'users', userCredential.user.uid), {
             name: formData.name,
-            displayName: formData.name,
             email: formData.email,
-            photoURL: '',
             createdAt: new Date().toISOString(),
             role: 'student'
           });
@@ -250,8 +249,9 @@ function AuthForm({ onLogin }) {
           // Switch to login form after showing success message
           setTimeout(() => {
             handleSwitchForm();
-          }, 2000);
+          }, 2000); // Give user time to read the success message
         } catch (innerError) {
+          // Remove flag on error too
           sessionStorage.removeItem('isRegistering');
           throw innerError;
         }
@@ -304,6 +304,7 @@ function AuthForm({ onLogin }) {
       ...formData,
       [e.target.name]: e.target.value
     });
+    // Clear error when user starts typing
     if (error) clearError();
     if (success) clearSuccess();
   };
@@ -330,6 +331,7 @@ function AuthForm({ onLogin }) {
 
   return (
     <div className="auth-wrapper">
+      {/* Error Notification */}
       {error && (
         <ErrorNotification 
           message={error} 
@@ -337,6 +339,7 @@ function AuthForm({ onLogin }) {
         />
       )}
 
+      {/* Success Notification */}
       {success && (
         <SuccessNotification 
           message={success} 
@@ -344,6 +347,7 @@ function AuthForm({ onLogin }) {
         />
       )}
 
+      {/* Background Elements */}
       <div className="background-elements">
         <div className="gradient-ball ball-1"></div>
         <div className="gradient-ball ball-2"></div>
@@ -351,7 +355,9 @@ function AuthForm({ onLogin }) {
         <div className="grid-lines"></div>
       </div>
 
+      {/* Main Container */}
       <div className={`auth-container ${isSwitching ? 'switching' : ''}`}>
+        {/* Left Panel - Branding */}
         <div className="brand-panel">
           <div className="brand-logo">
             {isMobile ? (
@@ -413,6 +419,7 @@ function AuthForm({ onLogin }) {
           </div>
         </div>
 
+        {/* Right Panel - Form */}
         <div className={`form-panel ${isSwitching ? 'switching' : ''} ${isLogin ? 'login' : 'register'}`}>
           <div className="form-header">
             <h2>{isLogin ? 'Sign In' : 'Create Account'}</h2>
@@ -420,6 +427,7 @@ function AuthForm({ onLogin }) {
           </div>
 
           <form onSubmit={handleSubmit} className="modern-form">
+            {/* Name Field */}
             <div className={`input-field ${!isLogin ? 'conditional visible' : 'conditional'}`}>
               <div className="input-icon">
                 <User size={18} />
@@ -435,6 +443,7 @@ function AuthForm({ onLogin }) {
               <div className="input-border"></div>
             </div>
 
+            {/* Email Field */}
             <div className="input-field">
               <div className="input-icon">
                 <Mail size={18} />
@@ -450,6 +459,7 @@ function AuthForm({ onLogin }) {
               <div className="input-border"></div>
             </div>
 
+            {/* Password Field */}
             <div className="input-field">
               <div className="input-icon">
                 <Lock size={18} />
@@ -473,6 +483,7 @@ function AuthForm({ onLogin }) {
               <div className="input-border"></div>
             </div>
 
+            {/* Confirm Password Field */}
             <div className={`input-field ${!isLogin ? 'conditional visible' : 'conditional'}`}>
               <div className="input-icon">
                 <Lock size={18} />
@@ -496,6 +507,7 @@ function AuthForm({ onLogin }) {
               <div className="input-border"></div>
             </div>
 
+            {/* Submit Button */}
             <button type="submit" className="submit-button" disabled={isLoading}>
               <span>
                 {isLoading ? 'Processing...' : (isLogin ? 'Sign In' : 'Create Account')}
@@ -504,6 +516,7 @@ function AuthForm({ onLogin }) {
             </button>
           </form>
 
+          {/* Mobile Switch Prompt */}
           <div className="mobile-switch-prompt">
             <p>
               {isLogin ? "Don't have an account?" : "Already have an account?"}

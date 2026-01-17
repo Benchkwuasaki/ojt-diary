@@ -1,4 +1,4 @@
-// src/components/Profile.jsx - COMPLETE WITH REAL-TIME UPDATES
+// src/components/Profile.jsx - OPTIMIZED UPLOAD WITH EDIT MODE CONTROL
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, 
@@ -9,6 +9,7 @@ import {
   Mail, 
   Phone, 
   Calendar,
+  Upload,
   CheckCircle,
   AlertCircle,
   Loader2
@@ -19,7 +20,7 @@ import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import './Profile.css';
 
-function Profile({ user, onUserUpdate }) {
+function Profile({ user, onPhotoUpdate }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isPasswordEditing, setIsPasswordEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,8 +34,7 @@ function Profile({ user, onUserUpdate }) {
     department: '',
     studentId: '',
     bio: '',
-    joinDate: '',
-    photoURL: ''
+    joinDate: ''
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -48,35 +48,38 @@ function Profile({ user, onUserUpdate }) {
 
   // Load user data from Firestore
   useEffect(() => {
-    if (user?.uid) {
-      const loadUserData = async () => {
+    const loadUserData = async () => {
+      if (user?.uid) {
         try {
           const userDoc = await getDoc(doc(db, 'users', user.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
             setUserData({
-              name: data.displayName || data.name || user.name || '',
-              email: data.email || user.email || '',
+              name: data.displayName || user.name || '',
+              email: user.email || '',
               phone: data.phone || '',
               department: data.department || 'Computer Science',
               studentId: data.studentId || '',
               bio: data.bio || 'OJT Student passionate about web development and UI/UX design.',
-              joinDate: data.joinDate || '2024',
-              photoURL: data.photoURL || user.photoURL || ''
+              joinDate: data.joinDate || '2024'
             });
             
-            if (data.photoURL || user.photoURL) {
-              setPhotoPreview(data.photoURL || user.photoURL);
+            // Set photo preview if available
+            if (data.photoURL) {
+              setPhotoPreview(data.photoURL);
+            } else if (user.photoURL) {
+              setPhotoPreview(user.photoURL);
             }
           } else {
+            // Use auth user data
             setUserData(prev => ({
               ...prev,
               name: user.name || user.displayName || '',
               email: user.email || '',
-              joinDate: '2024',
-              photoURL: user.photoURL || ''
+              joinDate: '2024'
             }));
             
+            // Set photo preview from auth user
             if (user.photoURL) {
               setPhotoPreview(user.photoURL);
             }
@@ -84,10 +87,10 @@ function Profile({ user, onUserUpdate }) {
         } catch (error) {
           console.error('Error loading user data:', error);
         }
-      };
+      }
+    };
 
-      loadUserData();
-    }
+    loadUserData();
   }, [user]);
 
   const validateForm = () => {
@@ -139,6 +142,7 @@ function Profile({ user, onUserUpdate }) {
       [name]: value
     }));
     
+    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -174,6 +178,7 @@ function Profile({ user, onUserUpdate }) {
           let width = img.width;
           let height = img.height;
 
+          // Calculate the new dimensions
           if (width > height) {
             if (width > maxWidth) {
               height = Math.round((height * maxWidth) / width);
@@ -192,6 +197,7 @@ function Profile({ user, onUserUpdate }) {
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
 
+          // Convert to compressed Blob
           canvas.toBlob(
             (blob) => {
               if (blob) {
@@ -217,8 +223,9 @@ function Profile({ user, onUserUpdate }) {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Validate file type and size
     const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif', 'image/webp'];
-    const maxSize = 5 * 1024 * 1024;
+    const maxSize = 5 * 1024 * 1024; // 5MB
 
     if (!validTypes.includes(file.type)) {
       showNotification('Please upload a valid image (JPEG, PNG, GIF, WebP)', 'error');
@@ -233,27 +240,28 @@ function Profile({ user, onUserUpdate }) {
     setUploadingPhoto(true);
     
     try {
-      // Show preview
+      // Show preview immediately
       const reader = new FileReader();
       reader.onloadend = () => {
         setPhotoPreview(reader.result);
       };
       reader.readAsDataURL(file);
 
-      // Compress image
+      // Compress image before upload
       const compressedFile = await compressImage(file);
       
-      // Create unique filename
+      // Create a unique filename
       const timestamp = Date.now();
-      const fileName = `profile_${user.uid}_${timestamp}.jpg`;
+      const fileName = `${user.uid}_${timestamp}.jpg`;
       const storageRef = ref(storage, `profile-photos/${user.uid}/${fileName}`);
 
-      // Upload to Firebase Storage
+      // Use uploadBytesResumable for better control
       const uploadTask = uploadBytesResumable(storageRef, compressedFile);
 
       uploadTask.on(
         'state_changed',
         (snapshot) => {
+          // Optional: You can show progress here if needed
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
           console.log(`Upload is ${progress}% done`);
         },
@@ -265,31 +273,25 @@ function Profile({ user, onUserUpdate }) {
         async () => {
           try {
             // Get download URL
-            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+            const photoURL = await getDownloadURL(uploadTask.snapshot.ref);
 
-            // Update Firebase Auth profile
+            // Update user profile in Firebase Auth
             await updateProfile(auth.currentUser, {
-              photoURL: downloadURL
+              photoURL: photoURL
             });
 
-            // Update Firestore with photo URL
+            // Update in Firestore
             await updateDoc(doc(db, 'users', user.uid), {
-              photoURL: downloadURL,
+              photoURL: photoURL,
               updatedAt: new Date().toISOString()
             });
 
-            // Update local state
-            setPhotoPreview(downloadURL);
-            setUserData(prev => ({ ...prev, photoURL: downloadURL }));
+            // Update photo preview
+            setPhotoPreview(photoURL);
             
             // Notify parent component to update user state
-            if (onUserUpdate) {
-              const updatedUser = {
-                ...user,
-                photoURL: downloadURL,
-                name: userData.name
-              };
-              onUserUpdate(updatedUser);
+            if (onPhotoUpdate) {
+              onPhotoUpdate(photoURL);
             }
 
             showNotification('Profile photo updated successfully!', 'success');
@@ -298,10 +300,6 @@ function Profile({ user, onUserUpdate }) {
             showNotification('Failed to save profile changes. Please try again.', 'error');
           } finally {
             setUploadingPhoto(false);
-            // Reset file input
-            if (fileInputRef.current) {
-              fileInputRef.current.value = '';
-            }
           }
         }
       );
@@ -319,10 +317,9 @@ function Profile({ user, onUserUpdate }) {
     try {
       const currentUser = auth.currentUser;
       
-      // Update Firebase Auth profile
+      // Update profile in Firebase Auth
       await updateProfile(currentUser, {
-        displayName: userData.name,
-        photoURL: userData.photoURL || currentUser.photoURL
+        displayName: userData.name
       });
 
       // Update email if changed
@@ -330,34 +327,28 @@ function Profile({ user, onUserUpdate }) {
         await updateEmail(currentUser, userData.email);
       }
 
-      // Update Firestore document
+      // Update additional data in Firestore
       await updateDoc(doc(db, 'users', user.uid), {
         displayName: userData.name,
-        name: userData.name,
         email: userData.email,
         phone: userData.phone,
         department: userData.department,
         studentId: userData.studentId,
         bio: userData.bio,
-        photoURL: userData.photoURL || currentUser.photoURL,
         updatedAt: new Date().toISOString()
       });
 
-      // Update local user data
-      const updatedUser = {
-        ...user,
-        name: userData.name,
-        email: userData.email,
-        photoURL: userData.photoURL || user.photoURL
-      };
-
-      // Notify parent component
-      if (onUserUpdate) {
-        onUserUpdate(updatedUser);
+      // Update photoURL if it was changed separately
+      if (photoPreview && photoPreview.startsWith('https://')) {
+        await updateProfile(currentUser, {
+          photoURL: photoPreview
+        });
+        
+        // Notify parent component
+        if (onPhotoUpdate) {
+          onPhotoUpdate(photoPreview);
+        }
       }
-
-      // Update localStorage
-      localStorage.setItem('user', JSON.stringify(updatedUser));
 
       showNotification('Profile updated successfully!', 'success');
       setIsEditing(false);
@@ -402,8 +393,6 @@ function Profile({ user, onUserUpdate }) {
       console.error('Error changing password:', error);
       if (error.code === 'auth/wrong-password') {
         showNotification('Current password is incorrect', 'error');
-      } else if (error.code === 'auth/requires-recent-login') {
-        showNotification('Please re-login to change your password', 'error');
       } else {
         showNotification('Failed to change password. Please try again.', 'error');
       }
@@ -448,6 +437,7 @@ function Profile({ user, onUserUpdate }) {
 
   return (
     <div className="profile-container">
+      {/* Notification */}
       {notification && (
         <div className={`notification ${notification.type}`}>
           {notification.type === 'success' ? (
@@ -459,6 +449,7 @@ function Profile({ user, onUserUpdate }) {
         </div>
       )}
 
+      {/* Profile Header */}
       <div className="profile-header">
         <div className="profile-avatar-section">
           <div className="profile-avatar-wrapper">
@@ -467,9 +458,6 @@ function Profile({ user, onUserUpdate }) {
                 src={photoPreview} 
                 alt="Profile" 
                 className="profile-avatar"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
               />
             ) : (
               <div className="profile-avatar-initials">
@@ -477,6 +465,7 @@ function Profile({ user, onUserUpdate }) {
               </div>
             )}
             
+            {/* Camera Icon - Only enabled when editing */}
             <button
               className={`upload-photo-btn ${!isEditing || uploadingPhoto ? 'disabled' : ''}`}
               onClick={handleUploadClick}
@@ -528,7 +517,9 @@ function Profile({ user, onUserUpdate }) {
         )}
       </div>
 
+      {/* Profile Content */}
       <div className="profile-content">
+        {/* Personal Information Section */}
         <div className="profile-section">
           <div className="section-header">
             <h2 className="section-title">
@@ -710,6 +701,7 @@ function Profile({ user, onUserUpdate }) {
           </div>
         </div>
 
+        {/* Password Change Section */}
         <div className="profile-section">
           <div className="section-header">
             <h2 className="section-title">
