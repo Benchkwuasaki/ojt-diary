@@ -1,4 +1,4 @@
-// src/components/Profile.jsx - OPTIMIZED UPLOAD WITH EDIT MODE CONTROL
+// src/components/Profile.jsx - OPTIMIZED FAST UPLOAD
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   User, 
@@ -166,7 +166,8 @@ function Profile({ user, onPhotoUpdate }) {
     }
   };
 
-  const compressImage = async (file, maxWidth = 800, maxHeight = 800, quality = 0.8) => {
+  // OPTIMIZED IMAGE COMPRESSION - Faster and smaller files
+  const compressImage = async (file, maxWidth = 600, maxHeight = 600, quality = 0.7) => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
@@ -178,7 +179,7 @@ function Profile({ user, onPhotoUpdate }) {
           let width = img.width;
           let height = img.height;
 
-          // Calculate the new dimensions
+          // Calculate the new dimensions - keep aspect ratio
           if (width > height) {
             if (width > maxWidth) {
               height = Math.round((height * maxWidth) / width);
@@ -195,6 +196,9 @@ function Profile({ user, onPhotoUpdate }) {
           canvas.height = height;
 
           const ctx = canvas.getContext('2d');
+          // Improve image quality
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
 
           // Convert to compressed Blob
@@ -219,6 +223,7 @@ function Profile({ user, onPhotoUpdate }) {
     });
   };
 
+  // OPTIMIZED PHOTO UPLOAD - Instant preview + Fast upload
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -237,67 +242,86 @@ function Profile({ user, onPhotoUpdate }) {
       return;
     }
 
+    // INSTANT PREVIEW - Show immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+
     setUploadingPhoto(true);
     
     try {
-      // Show preview immediately
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-
-      // Compress image before upload
+      // Compress image for faster upload
       const compressedFile = await compressImage(file);
       
-      // Create a unique filename
+      // Create user-specific filename with timestamp
       const timestamp = Date.now();
-      const fileName = `${user.uid}_${timestamp}.jpg`;
+      const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+      const fileName = `${user.uid}_${timestamp}_${sanitizedFileName}`;
+      
+      // Store in user-specific folder: profile-photos/{userId}/{fileName}
       const storageRef = ref(storage, `profile-photos/${user.uid}/${fileName}`);
 
-      // Use uploadBytesResumable for better control
-      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+      // Upload with metadata
+      const metadata = {
+        contentType: 'image/jpeg',
+        customMetadata: {
+          'uploadedBy': user.uid,
+          'uploadedAt': new Date().toISOString(),
+          'originalName': file.name
+        }
+      };
+
+      // Use uploadBytesResumable for progress tracking
+      const uploadTask = uploadBytesResumable(storageRef, compressedFile, metadata);
 
       uploadTask.on(
         'state_changed',
         (snapshot) => {
-          // Optional: You can show progress here if needed
           const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log(`Upload is ${progress}% done`);
+          console.log(`Upload progress: ${progress.toFixed(0)}%`);
         },
         (error) => {
           console.error('Upload error:', error);
           showNotification('Failed to upload photo. Please try again.', 'error');
           setUploadingPhoto(false);
+          // Revert preview on error
+          if (user.photoURL) {
+            setPhotoPreview(user.photoURL);
+          } else {
+            setPhotoPreview(null);
+          }
         },
         async () => {
           try {
             // Get download URL
             const photoURL = await getDownloadURL(uploadTask.snapshot.ref);
 
-            // Update user profile in Firebase Auth
+            // Update Firebase Auth profile
             await updateProfile(auth.currentUser, {
               photoURL: photoURL
             });
 
-            // Update in Firestore
+            // Update Firestore user document
             await updateDoc(doc(db, 'users', user.uid), {
               photoURL: photoURL,
-              updatedAt: new Date().toISOString()
+              updatedAt: new Date().toISOString(),
+              photoFileName: fileName
             });
 
-            // Update photo preview
+            // Update local preview
             setPhotoPreview(photoURL);
             
-            // Notify parent component to update user state
+            // Notify parent component
             if (onPhotoUpdate) {
               onPhotoUpdate(photoURL);
             }
 
             showNotification('Profile photo updated successfully!', 'success');
           } catch (error) {
-            console.error('Error updating profile:', error);
-            showNotification('Failed to save profile changes. Please try again.', 'error');
+            console.error('Error saving photo URL:', error);
+            showNotification('Photo uploaded but failed to save. Please try again.', 'error');
           } finally {
             setUploadingPhoto(false);
           }
@@ -307,6 +331,12 @@ function Profile({ user, onPhotoUpdate }) {
       console.error('Error processing image:', error);
       showNotification('Failed to process image. Please try again.', 'error');
       setUploadingPhoto(false);
+      // Revert preview on error
+      if (user.photoURL) {
+        setPhotoPreview(user.photoURL);
+      } else {
+        setPhotoPreview(null);
+      }
     }
   };
 
