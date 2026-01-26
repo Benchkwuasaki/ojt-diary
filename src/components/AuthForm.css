@@ -942,7 +942,9 @@
   height: 50px;
   border-radius: 50%;
   object-fit: cover;
+  object-position: center;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 /* Hide the original logo elements on mobile */
