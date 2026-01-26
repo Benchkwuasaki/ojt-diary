@@ -933,7 +933,7 @@
     animation: none;
   }
 }
-/* Add to existing CSS, preferably in the mobile media query section */
+
 
 /* Mobile logo image styles */
 .mobile-logo-img {
@@ -945,6 +945,7 @@
   object-position: center;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.3);
+  background-attachment: fixed;
 }
 
 /* Hide the original logo elements on mobile */
