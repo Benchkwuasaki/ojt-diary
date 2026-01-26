@@ -64,6 +64,7 @@
   border: 3px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease;
+  image-rendering: pixelated;
 }
 
 .logo-container img {
