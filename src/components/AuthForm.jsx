@@ -5,7 +5,7 @@ import {
   Mail, Lock, User, Eye, EyeOff, ArrowRight, Shield, Zap, Users, 
   AlertCircle, X, CheckCircle 
 } from 'lucide-react';
-import benchlogo from '../assets/Gemini_Generated_Image_d9cjlzd9cjlzd9cj.png';
+import benchlogo from '../assets/58b1de71e2c14cdd7137b1576be80fcb_o.jpg';
 import { auth, db } from '../firebase/config';
 import { 
   createUserWithEmailAndPassword, 
