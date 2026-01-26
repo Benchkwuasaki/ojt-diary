@@ -405,7 +405,7 @@ function AuthForm({ onLogin }) {
               </div>
             </div>
             
-            <div className="made-by">@ made by Bench Lipang</div>
+            <div className="made-by">@ made by obx company</div>
           </div>
           
           <div className="switch-prompt">
