@@ -18,7 +18,7 @@ import {
 import './Sidebar.css';
 import { auth } from '../firebase/config';
 import { signOut } from 'firebase/auth';
-
+import logo from '../assets/58b1de71e2c14cdd7137b1576be80fcb_o.jpg';
 
 function Sidebar({ 
   user, 
@@ -219,7 +219,7 @@ function Sidebar({
           
           {!isCollapsed && (
             <div className="version-info">
-              <p className="made-by">@ made by lipang</p>
+              <p className="made-by">@ made by obx Company</p>
             </div>
           )}
         </div>
