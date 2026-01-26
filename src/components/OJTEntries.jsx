@@ -1,4 +1,4 @@
-// src/components/OJTEntries.jsx - UPDATED WITH IMAGE UPLOAD
+// src/components/OJTEntries.jsx - COMPLETE WITH IMAGE UPLOAD
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
@@ -189,15 +189,11 @@ function OJTEntries() {
     try {
       setUploadingImage(true);
       
-      // Create a unique filename
       const timestamp = Date.now();
       const filename = `${user.uid}_${timestamp}_${file.name}`;
       const storageRef = ref(storage, `ojt-images/${filename}`);
       
-      // Upload file
       await uploadBytes(storageRef, file);
-      
-      // Get download URL
       const downloadURL = await getDownloadURL(storageRef);
       
       setUploadingImage(false);
@@ -214,20 +210,14 @@ function OJTEntries() {
     if (!imageUrl) return;
     
     try {
-      // Extract the path from the URL
       const urlParts = imageUrl.split('/');
       const filenameWithQuery = urlParts.pop();
       const filename = filenameWithQuery.split('?')[0];
       const decodedFilename = decodeURIComponent(filename);
-      
-      // Create storage reference
       const storageRef = ref(storage, `ojt-images/${decodedFilename}`);
-      
-      // Delete the file
       await deleteObject(storageRef);
     } catch (error) {
       console.error('Error deleting image:', error);
-      // Don't throw - we don't want to block entry deletion if image deletion fails
     }
   };
 
@@ -235,31 +225,26 @@ function OJTEntries() {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       setError('Please upload a valid image file (JPEG, PNG, GIF, WebP)');
       return;
     }
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image size should be less than 5MB');
       return;
     }
 
     try {
-      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
       };
       reader.readAsDataURL(file);
 
-      // Upload to Firebase Storage
       const downloadURL = await uploadImage(file);
       
-      // Update form data with image URL
       setFormData(prev => ({
         ...prev,
         imageUrl: downloadURL
@@ -275,7 +260,6 @@ function OJTEntries() {
 
   const removeImage = async () => {
     if (formData.imageUrl && !isEditMode) {
-      // Delete from storage if it's a new entry being edited
       await deleteImage(formData.imageUrl);
     }
     
@@ -354,7 +338,6 @@ function OJTEntries() {
       return;
     }
 
-    // Validate required fields including image
     if (!formData.imageUrl) {
       setError('Please upload documentation image');
       setSaving(false);
@@ -395,17 +378,14 @@ function OJTEntries() {
     const entryToDelete = entries.find(entry => entry.id === id);
     
     try {
-      // Delete image from storage if it exists
       if (entryToDelete.imageUrl) {
         await deleteImage(entryToDelete.imageUrl);
       }
       
-      // Delete entry from Firestore
       await deleteDoc(doc(db, 'ojtEntries', id));
       
       showNotification('Entry deleted successfully!');
       
-      // Update local storage
       const user = auth.currentUser;
       if (user) {
         const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
@@ -418,7 +398,6 @@ function OJTEntries() {
     } catch (error) {
       console.error('Error deleting entry:', error);
       
-      // Fallback to local storage
       const user = auth.currentUser;
       if (user) {
         const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
@@ -447,7 +426,6 @@ function OJTEntries() {
       imageUrl: entry.imageUrl || ''
     });
     
-    // Set image preview if image exists
     if (entry.imageUrl) {
       setImagePreview(entry.imageUrl);
     }
@@ -472,7 +450,6 @@ function OJTEntries() {
     
     if (entry.imageUrl) {
       viewContent += `\n\nImage: ${entry.imageUrl}`;
-      // Open image in new tab
       window.open(entry.imageUrl, '_blank');
     }
     
@@ -582,7 +559,6 @@ function OJTEntries() {
 
   return (
     <div className="ojt-entries-container">
-      {/* Notification */}
       {notification && (
         <div className="notification-overlay">
           <div className={`notification notification-${notification.type}`}>
@@ -606,7 +582,6 @@ function OJTEntries() {
         </div>
       )}
 
-      {/* Error Message */}
       {error && (
         <div className="error-message">
           <span>{error}</span>
@@ -771,7 +746,6 @@ function OJTEntries() {
               <h3 className="entry-title">{entry.title}</h3>
               <p className="entry-description">{entry.description}</p>
               
-              {/* Image Preview in Card */}
               {entry.imageUrl && (
                 <div className="entry-image-preview">
                   <div className="image-preview-container">
@@ -914,7 +888,7 @@ function OJTEntries() {
                 />
               </div>
               
-              {/* Image Upload Section - BELOW DESCRIPTION */}
+              {/* IMAGE UPLOAD SECTION - BELOW DESCRIPTION */}
               <div className="form-group">
                 <label>Documentation Image *</label>
                 <p className="skills-hint">Upload an image as proof/documentation of your OJT activity (Max: 5MB, JPG/PNG/GIF/WebP)</p>
