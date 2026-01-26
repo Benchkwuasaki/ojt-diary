@@ -9,6 +9,7 @@ import Calendar from './components/Calendar';
 import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
 import Profile from './components/Profile';
+import Progress from './components/Progress';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -91,7 +92,7 @@ function App() {
       case 'reports':
         return <div className="coming-soon">Reports - Coming Soon</div>;
       case 'progress':
-        return <div className="coming-soon">Progress - Coming Soon</div>;
+        return <Progress />;
       case 'notifications':
         return <div className="coming-soon">Notifications - Coming Soon</div>;
       case 'profile':
