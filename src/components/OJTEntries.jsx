@@ -1,4 +1,4 @@
-// src/components/OJTEntries.jsx - UPDATED WITH IMAGE UPLOAD
+// src/components/OJTEntries.jsx - COMPLETE REVISED VERSION WITH NOTIFICATIONS
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
@@ -18,12 +18,9 @@ import {
   User,
   BarChart3,
   TrendingUp,
-  Loader2,
-  Upload,
-  Image as ImageIcon,
-  Trash
+  Loader2
 } from 'lucide-react';
-import { db, auth, storage } from '../firebase/config';
+import { db, auth } from '../firebase/config';
 import { 
   collection, 
   addDoc, 
@@ -36,7 +33,6 @@ import {
   orderBy,
   serverTimestamp
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import './OJTEntries.css';
 
 function OJTEntries() {
@@ -54,8 +50,6 @@ function OJTEntries() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [imagePreview, setImagePreview] = useState(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -64,13 +58,11 @@ function OJTEntries() {
     status: 'pending',
     hours: 4,
     supervisor: '',
-    skills: [],
-    imageUrl: ''
+    skills: []
   });
 
   const suggestionsRef = useRef(null);
   const notificationTimeoutRef = useRef(null);
-  const fileInputRef = useRef(null);
 
   const statusOptions = [
     { value: 'pending', label: 'Pending', color: '#f59e0b', icon: <Clock size={14} /> },
@@ -169,125 +161,18 @@ function OJTEntries() {
   };
 
   const showNotification = (message, type = 'success') => {
+    // Clear any existing timeout
     if (notificationTimeoutRef.current) {
       clearTimeout(notificationTimeoutRef.current);
     }
     
+    // Set the new notification
     setNotification({ message, type });
     
+    // Auto-hide after 3 seconds
     notificationTimeoutRef.current = setTimeout(() => {
       setNotification(null);
     }, 3000);
-  };
-
-  const uploadImage = async (file) => {
-    const user = auth.currentUser;
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    try {
-      setUploadingImage(true);
-      
-      // Create a unique filename
-      const timestamp = Date.now();
-      const filename = `${user.uid}_${timestamp}_${file.name}`;
-      const storageRef = ref(storage, `ojt-images/${filename}`);
-      
-      // Upload file
-      await uploadBytes(storageRef, file);
-      
-      // Get download URL
-      const downloadURL = await getDownloadURL(storageRef);
-      
-      setUploadingImage(false);
-      return downloadURL;
-      
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      setUploadingImage(false);
-      throw error;
-    }
-  };
-
-  const deleteImage = async (imageUrl) => {
-    if (!imageUrl) return;
-    
-    try {
-      // Extract the path from the URL
-      const urlParts = imageUrl.split('/');
-      const filenameWithQuery = urlParts.pop();
-      const filename = filenameWithQuery.split('?')[0];
-      const decodedFilename = decodeURIComponent(filename);
-      
-      // Create storage reference
-      const storageRef = ref(storage, `ojt-images/${decodedFilename}`);
-      
-      // Delete the file
-      await deleteObject(storageRef);
-    } catch (error) {
-      console.error('Error deleting image:', error);
-      // Don't throw - we don't want to block entry deletion if image deletion fails
-    }
-  };
-
-  const handleImageUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-    if (!validTypes.includes(file.type)) {
-      setError('Please upload a valid image file (JPEG, PNG, GIF, WebP)');
-      return;
-    }
-
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image size should be less than 5MB');
-      return;
-    }
-
-    try {
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-
-      // Upload to Firebase Storage
-      const downloadURL = await uploadImage(file);
-      
-      // Update form data with image URL
-      setFormData(prev => ({
-        ...prev,
-        imageUrl: downloadURL
-      }));
-
-      showNotification('Image uploaded successfully!');
-      
-    } catch (error) {
-      console.error('Error handling image upload:', error);
-      setError('Failed to upload image. Please try again.');
-    }
-  };
-
-  const removeImage = async () => {
-    if (formData.imageUrl && !isEditMode) {
-      // Delete from storage if it's a new entry being edited
-      await deleteImage(formData.imageUrl);
-    }
-    
-    setFormData(prev => ({
-      ...prev,
-      imageUrl: ''
-    }));
-    setImagePreview(null);
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   const saveEntryToFirestore = async (entryData, isUpdate = false) => {
@@ -354,16 +239,10 @@ function OJTEntries() {
       return;
     }
 
-    // Validate required fields including image
-    if (!formData.imageUrl) {
-      setError('Please upload documentation image');
-      setSaving(false);
-      return;
-    }
-
     try {
       await saveEntryToFirestore(formData, isEditMode);
       
+      // Show success notification
       showNotification(
         isEditMode ? 'Entry updated successfully!' : 'Entry added successfully!'
       );
@@ -374,6 +253,7 @@ function OJTEntries() {
       const localStorageSuccess = saveEntryToLocalStorage(formData, isEditMode);
       
       if (localStorageSuccess) {
+        // Show success notification for local storage
         showNotification(
           `${isEditMode ? 'Entry updated' : 'Entry added'} locally (Firestore unavailable)`,
           'info'
@@ -392,20 +272,12 @@ function OJTEntries() {
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this entry?')) return;
 
-    const entryToDelete = entries.find(entry => entry.id === id);
-    
     try {
-      // Delete image from storage if it exists
-      if (entryToDelete.imageUrl) {
-        await deleteImage(entryToDelete.imageUrl);
-      }
-      
-      // Delete entry from Firestore
       await deleteDoc(doc(db, 'ojtEntries', id));
       
+      // Show success notification
       showNotification('Entry deleted successfully!');
       
-      // Update local storage
       const user = auth.currentUser;
       if (user) {
         const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
@@ -416,9 +288,8 @@ function OJTEntries() {
         }
       }
     } catch (error) {
-      console.error('Error deleting entry:', error);
+      console.error('Error deleting from Firestore:', error);
       
-      // Fallback to local storage
       const user = auth.currentUser;
       if (user) {
         const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
@@ -443,40 +314,14 @@ function OJTEntries() {
       status: entry.status || 'pending',
       hours: entry.hours || 4,
       supervisor: entry.supervisor || '',
-      skills: entry.skills || [],
-      imageUrl: entry.imageUrl || ''
+      skills: entry.skills || []
     });
-    
-    // Set image preview if image exists
-    if (entry.imageUrl) {
-      setImagePreview(entry.imageUrl);
-    }
-    
     setIsEditMode(true);
     setIsModalOpen(true);
   };
 
   const handleView = (entry) => {
-    let viewContent = `
-      Title: ${entry.title}
-      Status: ${entry.status}
-      Date: ${entry.date}
-      Hours: ${entry.hours}
-      Supervisor: ${entry.supervisor || 'Not specified'}
-      
-      Description:
-      ${entry.description}
-      
-      Skills: ${entry.skills ? entry.skills.join(', ') : 'None'}
-    `;
-    
-    if (entry.imageUrl) {
-      viewContent += `\n\nImage: ${entry.imageUrl}`;
-      // Open image in new tab
-      window.open(entry.imageUrl, '_blank');
-    }
-    
-    alert(viewContent);
+    alert(`Viewing: ${entry.title}\n\nStatus: ${entry.status}\nDate: ${entry.date}\nHours: ${entry.hours}\nSupervisor: ${entry.supervisor || 'Not specified'}\n\n${entry.description}`);
   };
 
   const resetForm = () => {
@@ -487,18 +332,12 @@ function OJTEntries() {
       status: 'pending',
       hours: 4,
       supervisor: '',
-      skills: [],
-      imageUrl: ''
+      skills: []
     });
     setSkillInput('');
     setShowSuggestions(false);
-    setImagePreview(null);
     setSelectedEntry(null);
     setIsEditMode(false);
-    
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
   };
 
   const getStatusColor = (status) => {
@@ -771,26 +610,6 @@ function OJTEntries() {
               <h3 className="entry-title">{entry.title}</h3>
               <p className="entry-description">{entry.description}</p>
               
-              {/* Image Preview in Card */}
-              {entry.imageUrl && (
-                <div className="entry-image-preview">
-                  <div className="image-preview-container">
-                    <img 
-                      src={entry.imageUrl} 
-                      alt="OJT Documentation" 
-                      className="entry-image"
-                      onClick={() => window.open(entry.imageUrl, '_blank')}
-                      style={{ cursor: 'pointer' }}
-                    />
-                    <div className="image-overlay">
-                      <ImageIcon size={16} color="white" />
-                      <span>Click to view full size</span>
-                    </div>
-                  </div>
-                  <p className="image-caption">Documentation Image</p>
-                </div>
-              )}
-              
               <div className="entry-details">
                 <div className="detail-item">
                   <Calendar size={14} />
@@ -912,79 +731,6 @@ function OJTEntries() {
                   required
                   disabled={saving}
                 />
-              </div>
-              
-              {/* Image Upload Section - BELOW DESCRIPTION */}
-              <div className="form-group">
-                <label>Documentation Image *</label>
-                <p className="skills-hint">Upload an image as proof/documentation of your OJT activity (Max: 5MB, JPG/PNG/GIF/WebP)</p>
-                
-                <div className="image-upload-container">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="file-input"
-                    required={!formData.imageUrl}
-                    disabled={saving || uploadingImage}
-                    style={{ display: 'none' }}
-                  />
-                  
-                  {imagePreview ? (
-                    <div className="image-preview">
-                      <img 
-                        src={imagePreview} 
-                        alt="Preview" 
-                        className="preview-image"
-                      />
-                      <div className="image-preview-actions">
-                        <button
-                          type="button"
-                          className="change-image-btn"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={saving || uploadingImage}
-                        >
-                          <Upload size={14} />
-                          Change Image
-                        </button>
-                        <button
-                          type="button"
-                          className="remove-image-btn"
-                          onClick={removeImage}
-                          disabled={saving || uploadingImage}
-                        >
-                          <Trash size={14} />
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div 
-                      className={`image-upload-area ${uploadingImage ? 'uploading' : ''}`}
-                      onClick={() => !saving && !uploadingImage && fileInputRef.current?.click()}
-                    >
-                      {uploadingImage ? (
-                        <div className="uploading-content">
-                          <Loader2 size={24} className="spin" />
-                          <span>Uploading image...</span>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload size={40} color="#64748b" />
-                          <p>Click to upload documentation image</p>
-                          <p className="upload-hint">Required • Max 5MB</p>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-                
-                {!formData.imageUrl && !imagePreview && (
-                  <p className="error-text" style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>
-                    * Documentation image is required
-                  </p>
-                )}
               </div>
               
               <div className="form-row">
@@ -1164,16 +910,11 @@ function OJTEntries() {
                 >
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn" disabled={saving || uploadingImage}>
+                <button type="submit" className="submit-btn" disabled={saving}>
                   {saving ? (
                     <>
                       <Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
                       Saving...
-                    </>
-                  ) : uploadingImage ? (
-                    <>
-                      <Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
-                      Uploading Image...
                     </>
                   ) : isEditMode ? 'Update Entry' : 'Save Entry'}
                 </button>
