@@ -1,4 +1,4 @@
-// src/components/OJTEntries.jsx - UPDATED WITH IMAGE UPLOAD
+// src/components/OJTEntries.jsx - COMPLETE REVISED CODE WITH IMAGE UPLOAD
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
@@ -21,9 +21,7 @@ import {
   Loader2,
   Upload,
   Image,
-  Paperclip,
-  Download,
-  ExternalLink
+  Paperclip
 } from 'lucide-react';
 import { db, auth, storage } from '../firebase/config';
 import { 
@@ -54,7 +52,6 @@ function OJTEntries() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [notification, setNotification] = useState(null);
   const [imageFile, setImageFile] = useState(null);
@@ -89,7 +86,7 @@ function OJTEntries() {
     'Project Management', 'Data Analysis', 'UI/UX Design', 'API Development'
   ];
 
-  // Load entries
+  // Load entries from Firestore
   useEffect(() => {
     const user = auth.currentUser;
     
@@ -154,6 +151,7 @@ function OJTEntries() {
     }
   }, []);
 
+  // Cleanup notification timeout
   useEffect(() => {
     return () => {
       if (notificationTimeoutRef.current) {
@@ -161,6 +159,22 @@ function OJTEntries() {
       }
     };
   }, []);
+
+  // Load entries from local storage
+  const loadFromLocalStorage = () => {
+    const user = auth.currentUser;
+    if (!user) return;
+    
+    const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
+    if (savedEntries) {
+      try {
+        const parsedEntries = JSON.parse(savedEntries);
+        setEntries(parsedEntries);
+      } catch (e) {
+        console.error('Error parsing local storage:', e);
+      }
+    }
+  };
 
   // Upload image to Firebase Storage
   const uploadImage = async (file) => {
@@ -170,22 +184,41 @@ function OJTEntries() {
     }
 
     try {
+      console.log('Starting image upload...', file.name);
+      
       // Create a unique filename with timestamp
       const timestamp = Date.now();
-      const fileName = `ojt_entry_${user.uid}_${timestamp}_${file.name.replace(/\s+/g, '_')}`;
+      const fileName = `${timestamp}_${file.name.replace(/\s+/g, '_')}`;
       
-      // Create storage reference
-      const storageRef = ref(storage, `ojt_images/${user.uid}/${fileName}`);
+      // Create storage reference - organized by user
+      const storageRef = ref(storage, `users/${user.uid}/ojt_images/${fileName}`);
       
-      // Upload file
-      const snapshot = await uploadBytes(storageRef, file);
+      console.log('Storage path:', `users/${user.uid}/ojt_images/${fileName}`);
+      
+      // Upload file with metadata
+      const metadata = {
+        contentType: file.type,
+        customMetadata: {
+          uploadedBy: user.uid,
+          uploadedAt: new Date().toISOString()
+        }
+      };
+      
+      const snapshot = await uploadBytes(storageRef, file, metadata);
+      console.log('Upload successful:', snapshot);
       
       // Get download URL
       const downloadURL = await getDownloadURL(snapshot.ref);
+      console.log('Download URL:', downloadURL);
       
       return downloadURL;
     } catch (error) {
       console.error('Error uploading image:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        serverResponse: error.serverResponse
+      });
       throw error;
     }
   };
@@ -200,14 +233,19 @@ function OJTEntries() {
       const encodedPath = urlParts.slice(urlParts.indexOf('o') + 1).join('/').split('?')[0];
       const filePath = decodeURIComponent(encodedPath);
       
+      console.log('Deleting image:', filePath);
+      
       const imageRef = ref(storage, filePath);
       await deleteObject(imageRef);
+      
+      console.log('Image deleted successfully');
     } catch (error) {
       console.error('Error deleting image:', error);
-      // Don't throw error here - we can continue without deleting the image
+      // Don't throw error - continue even if deletion fails
     }
   };
 
+  // Show notification message
   const showNotification = (message, type = 'success') => {
     if (notificationTimeoutRef.current) {
       clearTimeout(notificationTimeoutRef.current);
@@ -220,7 +258,8 @@ function OJTEntries() {
     }, 3000);
   };
 
-  const saveEntryToFirestore = async (entryData, isUpdate = false, hasNewImage = false) => {
+  // Save entry to Firestore
+  const saveEntryToFirestore = async (entryData, isUpdate = false) => {
     const user = auth.currentUser;
     if (!user) {
       throw new Error('User not authenticated');
@@ -237,8 +276,10 @@ function OJTEntries() {
       if (isUpdate && selectedEntry) {
         const entryRef = doc(db, 'ojtEntries', selectedEntry.id);
         await updateDoc(entryRef, entryWithMetadata);
+        console.log('Entry updated in Firestore');
       } else {
-        await addDoc(collection(db, 'ojtEntries'), entryWithMetadata);
+        const docRef = await addDoc(collection(db, 'ojtEntries'), entryWithMetadata);
+        console.log('Entry added to Firestore with ID:', docRef.id);
       }
       
       return true;
@@ -248,6 +289,7 @@ function OJTEntries() {
     }
   };
 
+  // Save entry to local storage as fallback
   const saveEntryToLocalStorage = (entryData, isUpdate = false) => {
     const user = auth.currentUser;
     if (!user) return false;
@@ -272,41 +314,50 @@ function OJTEntries() {
     return true;
   };
 
+  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    setUploading(true);
     setError(null);
 
     const user = auth.currentUser;
     if (!user) {
       setError('Please log in to save entries');
       setSaving(false);
-      setUploading(false);
       return;
     }
 
     try {
       let finalFormData = { ...formData };
       
-      // Upload image if exists
+      // Upload image if new image file exists
       if (imageFile) {
         try {
+          console.log('Uploading image...');
           const imageUrl = await uploadImage(imageFile);
+          console.log('Image uploaded successfully:', imageUrl);
           finalFormData = { ...finalFormData, imageUrl };
           
           // If editing and there was a previous image, delete it
           if (isEditMode && selectedEntry?.imageUrl && selectedEntry.imageUrl !== imageUrl) {
+            console.log('Deleting old image...');
             await deleteImageFromStorage(selectedEntry.imageUrl);
           }
         } catch (uploadError) {
           console.error('Error uploading image:', uploadError);
-          // Continue without image if upload fails
-          showNotification('Entry saved but image upload failed', 'info');
+          setSaving(false);
+          setError(`Failed to upload image: ${uploadError.message}`);
+          return; // Stop submission if image upload fails
         }
+      } else if (isEditMode && !imageFile && !formData.imageUrl && selectedEntry?.imageUrl) {
+        // User removed the image during edit
+        console.log('Image was removed, deleting from storage...');
+        await deleteImageFromStorage(selectedEntry.imageUrl);
       }
 
-      await saveEntryToFirestore(finalFormData, isEditMode, !!imageFile);
+      // Save to Firestore
+      console.log('Saving entry to Firestore...');
+      await saveEntryToFirestore(finalFormData, isEditMode);
       
       showNotification(
         isEditMode ? 'Entry updated successfully!' : 'Entry added successfully!'
@@ -315,6 +366,9 @@ function OJTEntries() {
       resetForm();
       setIsModalOpen(false);
     } catch (firestoreError) {
+      console.error('Firestore error:', firestoreError);
+      
+      // Fallback to local storage
       const localStorageSuccess = saveEntryToLocalStorage(formData, isEditMode);
       
       if (localStorageSuccess) {
@@ -330,10 +384,10 @@ function OJTEntries() {
       }
     } finally {
       setSaving(false);
-      setUploading(false);
     }
   };
 
+  // Handle entry deletion
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this entry?')) return;
 
@@ -377,6 +431,7 @@ function OJTEntries() {
     }
   };
 
+  // Handle edit entry
   const handleEdit = (entry) => {
     setSelectedEntry(entry);
     setFormData({
@@ -395,6 +450,7 @@ function OJTEntries() {
     setIsModalOpen(true);
   };
 
+  // Handle view entry details
   const handleView = (entry) => {
     let viewMessage = `Title: ${entry.title}\n\n`;
     viewMessage += `Status: ${entry.status}\n`;
@@ -414,6 +470,7 @@ function OJTEntries() {
     alert(viewMessage);
   };
 
+  // Handle image file upload
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -442,14 +499,17 @@ function OJTEntries() {
     reader.readAsDataURL(file);
   };
 
+  // Remove selected image
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
+    setFormData({...formData, imageUrl: ''});
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
+  // Reset form to initial state
   const resetForm = () => {
     setFormData({
       title: '',
@@ -472,20 +532,24 @@ function OJTEntries() {
     }
   };
 
+  // Get status color
   const getStatusColor = (status) => {
     const statusOption = statusOptions.find(opt => opt.value === status);
     return statusOption ? statusOption.color : '#64748b';
   };
 
+  // Get status icon
   const getStatusIcon = (status) => {
     const statusOption = statusOptions.find(opt => opt.value === status);
     return statusOption ? statusOption.icon : <Clock size={14} />;
   };
 
+  // Handle quick filter
   const handleQuickFilter = (status) => {
     setActiveFilter(status);
   };
 
+  // Add skill to form
   const addSkill = (skill) => {
     const trimmedSkill = skill.trim();
     if (trimmedSkill && !formData.skills.includes(trimmedSkill)) {
@@ -498,6 +562,7 @@ function OJTEntries() {
     setShowSuggestions(false);
   };
 
+  // Remove skill from form
   const removeSkill = (skill) => {
     setFormData({
       ...formData,
@@ -505,11 +570,13 @@ function OJTEntries() {
     });
   };
 
+  // Calculate statistics
   const totalEntries = entries.length;
   const completedEntries = entries.filter(e => e.status === 'completed').length;
   const inProgressEntries = entries.filter(e => e.status === 'in-progress').length;
   const totalHours = entries.reduce((total, entry) => total + (entry.hours || 0), 0);
 
+  // Filter and sort entries
   const filteredEntries = entries
     .filter(entry => {
       const matchesSearch = entry.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -540,6 +607,7 @@ function OJTEntries() {
       return 0;
     });
 
+  // Loading screen
   if (loading) {
     return (
       <div className="loading-screen">
@@ -590,6 +658,7 @@ function OJTEntries() {
         </div>
       )}
 
+      {/* Header */}
       <div className="entries-header">
         <div className="header-content">
           <h1 className="entries-title">OJT Entries</h1>
@@ -597,6 +666,7 @@ function OJTEntries() {
         </div>
       </div>
 
+      {/* Statistics Cards */}
       <div className="stats-grid">
         <div className="stat-card primary">
           <div className="stat-icon">
@@ -639,6 +709,7 @@ function OJTEntries() {
         </div>
       </div>
 
+      {/* Quick Filters */}
       <div className="quick-filters">
         <button 
           className={`filter-btn ${activeFilter === 'all' ? 'active' : ''}`}
@@ -669,6 +740,7 @@ function OJTEntries() {
         </button>
       </div>
 
+      {/* Search and Sort Controls */}
       <div className="controls-bar">
         <div className="search-box">
           <Search size={18} color="#64748b" />
@@ -703,6 +775,7 @@ function OJTEntries() {
         </div>
       </div>
 
+      {/* Entries Grid */}
       <div className="entries-grid">
         {filteredEntries.map(entry => (
           <div key={entry.id} className="entry-card">
@@ -807,6 +880,7 @@ function OJTEntries() {
         ))}
       </div>
 
+      {/* Empty State */}
       {filteredEntries.length === 0 && (
         <div className="empty-state">
           <div className="empty-icon">
@@ -825,6 +899,7 @@ function OJTEntries() {
         </div>
       )}
 
+      {/* Floating Action Button */}
       <button 
         className="fab"
         onClick={() => {
@@ -837,9 +912,10 @@ function OJTEntries() {
         {saving ? <Loader2 size={24} className="spin" /> : <Plus size={24} />}
       </button>
 
+      {/* Add/Edit Entry Modal */}
       {isModalOpen && (
         <div className="modal-overlay" onClick={() => {
-          if (!saving && !uploading) {
+          if (!saving) {
             setIsModalOpen(false);
             resetForm();
           }
@@ -853,13 +929,13 @@ function OJTEntries() {
               <button 
                 className="close-btn" 
                 onClick={() => {
-                  if (!saving && !uploading) {
+                  if (!saving) {
                     setIsModalOpen(false);
                     resetForm();
                   }
                 }}
                 title="Close"
-                disabled={saving || uploading}
+                disabled={saving}
               >
                 <X size={20} />
               </button>
@@ -874,7 +950,7 @@ function OJTEntries() {
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
                   placeholder="What did you work on?"
                   required
-                  disabled={saving || uploading}
+                  disabled={saving}
                 />
               </div>
               
@@ -886,7 +962,7 @@ function OJTEntries() {
                   placeholder="Describe your OJT activity, tasks completed, and what you learned..."
                   rows="4"
                   required
-                  disabled={saving || uploading}
+                  disabled={saving}
                 />
               </div>
               
@@ -898,7 +974,7 @@ function OJTEntries() {
                     value={formData.date}
                     onChange={(e) => setFormData({...formData, date: e.target.value})}
                     required
-                    disabled={saving || uploading}
+                    disabled={saving}
                   />
                 </div>
                 
@@ -912,7 +988,7 @@ function OJTEntries() {
                     max="24"
                     placeholder="Hours spent"
                     required
-                    disabled={saving || uploading}
+                    disabled={saving}
                   />
                 </div>
               </div>
@@ -925,14 +1001,14 @@ function OJTEntries() {
                       key={option.value}
                       type="button"
                       className={`status-btn ${formData.status === option.value ? 'active' : ''}`}
-                      onClick={() => !saving && !uploading && setFormData({...formData, status: option.value})}
+                      onClick={() => !saving && setFormData({...formData, status: option.value})}
                       style={{ 
                         borderColor: option.color,
                         background: formData.status === option.value ? option.color : 'white',
-                        cursor: (saving || uploading) ? 'not-allowed' : 'pointer',
-                        opacity: (saving || uploading) ? 0.7 : 1
+                        cursor: saving ? 'not-allowed' : 'pointer',
+                        opacity: saving ? 0.7 : 1
                       }}
-                      disabled={saving || uploading}
+                      disabled={saving}
                     >
                       {option.icon}
                       {option.label}
@@ -948,7 +1024,7 @@ function OJTEntries() {
                   value={formData.supervisor}
                   onChange={(e) => setFormData({...formData, supervisor: e.target.value})}
                   placeholder="Supervisor's name"
-                  disabled={saving || uploading}
+                  disabled={saving}
                 />
               </div>
               
@@ -960,10 +1036,10 @@ function OJTEntries() {
                 <div className="image-upload-container">
                   <div 
                     className="image-upload-area"
-                    onClick={() => !saving && !uploading && fileInputRef.current?.click()}
+                    onClick={() => !saving && fileInputRef.current?.click()}
                     style={{ 
-                      cursor: (saving || uploading) ? 'not-allowed' : 'pointer',
-                      opacity: (saving || uploading) ? 0.7 : 1
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                      opacity: saving ? 0.7 : 1
                     }}
                   >
                     <input
@@ -971,7 +1047,7 @@ function OJTEntries() {
                       type="file"
                       accept="image/*"
                       onChange={handleImageUpload}
-                      disabled={saving || uploading}
+                      disabled={saving}
                       style={{ display: 'none' }}
                     />
                     
@@ -985,7 +1061,7 @@ function OJTEntries() {
                             e.stopPropagation();
                             removeImage();
                           }}
-                          disabled={saving || uploading}
+                          disabled={saving}
                         >
                           <X size={16} />
                         </button>
@@ -1043,6 +1119,7 @@ function OJTEntries() {
                 </div>
               </div>
               
+              {/* Skills Section */}
               <div className="form-group">
                 <label>Skills Developed</label>
                 <p className="skills-hint">Type a skill and press Enter, or select from suggestions</p>
@@ -1054,8 +1131,8 @@ function OJTEntries() {
                       <button 
                         type="button"
                         className="remove-skill-btn"
-                        onClick={() => !saving && !uploading && removeSkill(skill)}
-                        disabled={saving || uploading}
+                        onClick={() => !saving && removeSkill(skill)}
+                        disabled={saving}
                       >
                         <X size={12} />
                       </button>
@@ -1072,18 +1149,18 @@ function OJTEntries() {
                       setShowSuggestions(true);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && skillInput.trim() && !saving && !uploading) {
+                      if (e.key === 'Enter' && skillInput.trim() && !saving) {
                         e.preventDefault();
                         addSkill(skillInput);
                       }
                     }}
-                    onFocus={() => !saving && !uploading && setShowSuggestions(true)}
+                    onFocus={() => !saving && setShowSuggestions(true)}
                     placeholder="Type a skill and press Enter"
                     className="skills-input"
-                    disabled={saving || uploading}
+                    disabled={saving}
                   />
                   
-                  {showSuggestions && skillInput && !saving && !uploading && (
+                  {showSuggestions && skillInput && !saving && (
                     <div className="skills-suggestions">
                       {skillOptions
                         .filter(skill => 
@@ -1095,7 +1172,7 @@ function OJTEntries() {
                           <div
                             key={index}
                             className="suggestion-item"
-                            onClick={() => !saving && !uploading && addSkill(skill)}
+                            onClick={() => !saving && addSkill(skill)}
                           >
                             {skill}
                           </div>
@@ -1104,7 +1181,7 @@ function OJTEntries() {
                       {skillInput.trim() && !skillOptions.includes(skillInput.trim()) && (
                         <div
                           className="suggestion-item add-new"
-                          onClick={() => !saving && !uploading && addSkill(skillInput)}
+                          onClick={() => !saving && addSkill(skillInput)}
                         >
                           <Plus size={12} />
                           Add "{skillInput.trim()}"
@@ -1122,14 +1199,14 @@ function OJTEntries() {
                       type="button"
                       className={`skill-btn ${formData.skills.includes(skill) ? 'selected' : ''}`}
                       onClick={() => {
-                        if (!saving && !uploading) {
+                        if (!saving) {
                           const newSkills = formData.skills.includes(skill)
                             ? formData.skills.filter(s => s !== skill)
                             : [...formData.skills, skill];
                           setFormData({...formData, skills: newSkills});
                         }
                       }}
-                      disabled={saving || uploading}
+                      disabled={saving}
                     >
                       {skill}
                       {formData.skills.includes(skill) && <CheckCircle size={12} />}
@@ -1144,25 +1221,26 @@ function OJTEntries() {
                 )}
               </div>
               
+              {/* Form Actions */}
               <div className="modal-actions">
                 <button 
                   type="button" 
                   className="cancel-btn"
                   onClick={() => {
-                    if (!saving && !uploading) {
+                    if (!saving) {
                       setIsModalOpen(false);
                       resetForm();
                     }
                   }}
-                  disabled={saving || uploading}
+                  disabled={saving}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="submit-btn" disabled={saving || uploading}>
-                  {saving || uploading ? (
+                <button type="submit" className="submit-btn" disabled={saving}>
+                  {saving ? (
                     <>
                       <Loader2 size={16} style={{ marginRight: '8px', animation: 'spin 1s linear infinite' }} />
-                      {uploading ? 'Uploading...' : 'Saving...'}
+                      Saving...
                     </>
                   ) : isEditMode ? 'Update Entry' : 'Save Entry'}
                 </button>
