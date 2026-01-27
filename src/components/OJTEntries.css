@@ -288,6 +288,7 @@
   font-size: 12px;
   font-weight: 500;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .status-text {
@@ -298,6 +299,7 @@
 .entry-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
 }
 
 .action-btn {
