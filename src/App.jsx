@@ -10,8 +10,7 @@ import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
 import Profile from './components/Profile';
 import Progress from './components/Progress';
-import { auth } from './firebase/config.js';
-import Report from './components/Reports.jsx';
+import Reports from './components/Reports.jsx';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);
@@ -91,7 +90,7 @@ function App() {
       case 'calendar':
         return <Calendar />;
       case 'reports':
-        return <Report />;
+        return <Reports />;
       case 'progress':
         return <Progress/>;
       case 'notifications':
