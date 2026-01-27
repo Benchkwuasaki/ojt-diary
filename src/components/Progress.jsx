@@ -51,16 +51,6 @@ function Progress() {
     { id: 5, title: 'OJT Completion', date: 'Mar 15, 2024', completed: false }
   ];
 
-  const weeklyProgress = [
-    { day: 'Mon', hours: 8, target: 8 },
-    { day: 'Tue', hours: 7.5, target: 8 },
-    { day: 'Wed', hours: 8, target: 8 },
-    { day: 'Thu', hours: 6, target: 8 },
-    { day: 'Fri', hours: 8, target: 8 },
-    { day: 'Sat', hours: 4, target: 4 },
-    { day: 'Sun', hours: 2, target: 4 }
-  ];
-
   const achievements = [
     { id: 1, title: 'Quick Learner', description: 'Completed training 2 days early', icon: <Sparkles size={20} />, date: 'Jan 10' },
     { id: 2, title: 'Team Player', description: 'Collaborated on 5+ projects', icon: <Award size={20} />, date: 'Jan 25' },
