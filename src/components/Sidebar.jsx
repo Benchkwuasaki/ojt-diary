@@ -53,7 +53,7 @@ function Sidebar({
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { id: 'ojt-entries', label: 'OJT Entries', icon: <BookOpen size={20} /> },
     { id: 'calendar', label: 'Calendar', icon: <Calendar size={20} /> },
-    { id: 'Reports', label: 'Reports', icon: <FileText size={20} /> },
+    { id: 'reports', label: 'Reports', icon: <FileText size={20} /> },
     { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell size={20} />, badge: 3 },
     { id: 'profile', label: 'Profile', icon: <User size={20} /> },
