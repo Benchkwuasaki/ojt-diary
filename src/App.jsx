@@ -10,7 +10,7 @@ import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
 import Profile from './components/Profile';
 import Progress from './components/Progress';
-
+import { auth } from './firebase/config.js';
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState(null);

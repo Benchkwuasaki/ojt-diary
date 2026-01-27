@@ -16,7 +16,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import './Progress.css';
-
+import { auth, db, storage } from '../firebase/config';
 
 function Progress() {
   const [timeFilter, setTimeFilter] = useState('week');
