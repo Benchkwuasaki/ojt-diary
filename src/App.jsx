@@ -89,7 +89,7 @@ function App() {
         return <OJTEntries />;
       case 'calendar':
         return <Calendar />;
-      case 'reports':
+      case 'Reports':
         return <Reports />;
       case 'progress':
         return <Progress/>;

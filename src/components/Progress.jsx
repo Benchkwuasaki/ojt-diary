@@ -17,30 +17,30 @@ import {
 } from 'lucide-react';
 import './Progress.css';
 import { auth, db, storage } from '../firebase/config';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 function Progress() {
   const [timeFilter, setTimeFilter] = useState('week');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
-
-  // Sample progress data - in a real app, this would come from Firebase
+  const [entries, setEntries] = useState([]);
   const [progressData, setProgressData] = useState({
-    overallProgress: 68,
-    weeklyTarget: 85,
-    hoursCompleted: 320,
+    overallProgress: 0,
+    weeklyTarget: 0,
+    hoursCompleted: 0,
     totalHours: 500,
-    completedTasks: 24,
-    totalTasks: 36,
-    streakDays: 14,
-    lastActive: '2 hours ago'
+    completedTasks: 0,
+    totalTasks: 0,
+    streakDays: 0,
+    lastActive: 'Loading...'
   });
 
   const categories = [
-    { id: 'all', label: 'All Tasks', count: 36, color: '#22c55e' },
-    { id: 'technical', label: 'Technical Skills', count: 12, color: '#3b82f6' },
-    { id: 'soft', label: 'Soft Skills', count: 8, color: '#8b5cf6' },
-    { id: 'projects', label: 'Projects', count: 10, color: '#f59e0b' },
-    { id: 'documents', label: 'Documentation', count: 6, color: '#ef4444' }
+    { id: 'all', label: 'All Tasks', count: 0, color: '#22c55e' },
+    { id: 'technical', label: 'Technical Skills', count: 0, color: '#3b82f6' },
+    { id: 'soft', label: 'Soft Skills', count: 0, color: '#8b5cf6' },
+    { id: 'projects', label: 'Projects', count: 0, color: '#f59e0b' },
+    { id: 'documents', label: 'Documentation', count: 0, color: '#ef4444' }
   ];
 
   const milestones = [
@@ -75,28 +75,159 @@ function Progress() {
   ];
 
   const calculateCategoryProgress = (categoryId) => {
-    // Simulate progress calculation
-    const progressMap = {
-      'technical': 75,
-      'soft': 62,
-      'projects': 80,
-      'documents': 50,
-      'all': progressData.overallProgress
-    };
-    return progressMap[categoryId] || 68;
+    if (entries.length === 0) return 0;
+    
+    let categoryEntries = entries;
+    if (categoryId !== 'all') {
+      categoryEntries = entries.filter(e => {
+        const skills = e.skills || [];
+        return skills.some(skill => 
+          skill.toLowerCase().includes(categoryId) ||
+          categoryId.includes(skill.toLowerCase())
+        );
+      });
+    }
+    
+    if (categoryEntries.length === 0) return 0;
+    const completed = categoryEntries.filter(e => e.status === 'completed').length;
+    return Math.round((completed / categoryEntries.length) * 100);
   };
 
   const exportProgress = () => {
     setLoading(true);
-    // Simulate export process
     setTimeout(() => {
       const link = document.createElement('a');
-      link.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(progressData));
+      link.href = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify({
+        ...progressData,
+        entries: entries,
+        generatedAt: new Date().toISOString()
+      }));
       link.download = `progress-report-${new Date().toISOString().split('T')[0]}.json`;
       link.click();
       setLoading(false);
-    }, 1000);
+    }, 500);
   };
+
+  // Fetch entries from Firestore
+  useEffect(() => {
+    const fetchEntries = async () => {
+      try {
+        setLoading(true);
+        const currentUser = auth.currentUser;
+        
+        if (!currentUser) {
+          setLoading(false);
+          return;
+        }
+
+        const entriesRef = collection(db, 'ojt_entries');
+        const q = query(entriesRef, where('userId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        
+        const fetchedEntries = [];
+        querySnapshot.forEach((doc) => {
+          fetchedEntries.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        
+        setEntries(fetchedEntries);
+        calculateProgressMetrics(fetchedEntries);
+      } catch (error) {
+        console.error('Error fetching entries:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEntries();
+  }, []);
+
+  // Calculate progress metrics from entries
+  const calculateProgressMetrics = (entriesList) => {
+    const totalEntries = entriesList.length;
+    const completedEntries = entriesList.filter(e => e.status === 'completed').length;
+    const totalHours = entriesList.reduce((total, entry) => total + (parseInt(entry.hours) || 0), 0);
+    const targetHours = 500;
+    const overallPct = totalHours > 0 ? Math.round((totalHours / targetHours) * 100) : 0;
+    const weeklyPct = totalHours > 0 ? Math.round((totalHours / 40) * 100) : 0;
+
+    const lastEntry = entriesList.length > 0 
+      ? new Date(entriesList[0].date).toLocaleDateString()
+      : 'No activity';
+
+    setProgressData({
+      overallProgress: Math.min(overallPct, 100),
+      weeklyTarget: Math.min(weeklyPct, 100),
+      hoursCompleted: totalHours,
+      totalHours: targetHours,
+      completedTasks: completedEntries,
+      totalTasks: totalEntries,
+      streakDays: calculateStreak(entriesList),
+      lastActive: lastEntry
+    });
+  };
+
+  // Calculate streak days
+  const calculateStreak = (entriesList) => {
+    if (entriesList.length === 0) return 0;
+    
+    const sortedEntries = entriesList
+      .map(e => new Date(e.date))
+      .sort((a, b) => b - a);
+    
+    let streak = 1;
+    let currentDate = new Date(sortedEntries[0]);
+    currentDate.setHours(0, 0, 0, 0);
+    
+    for (let i = 1; i < sortedEntries.length; i++) {
+      const prevDate = new Date(sortedEntries[i]);
+      prevDate.setHours(0, 0, 0, 0);
+      
+      const diffTime = currentDate - prevDate;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      if (diffDays === 1) {
+        streak++;
+        currentDate = prevDate;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  };
+
+  // Calculate weekly progress from entries
+  const calculateWeeklyProgress = () => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const today = new Date();
+    const weekStart = new Date(today.setDate(today.getDate() - today.getDay() + 1));
+    
+    return days.map((day, index) => {
+      const dayDate = new Date(weekStart);
+      dayDate.setDate(dayDate.getDate() + index);
+      dayDate.setHours(0, 0, 0, 0);
+      
+      const dayEntries = entries.filter(entry => {
+        const entryDate = new Date(entry.date);
+        entryDate.setHours(0, 0, 0, 0);
+        return entryDate.getTime() === dayDate.getTime();
+      });
+      
+      const hours = dayEntries.reduce((total, entry) => total + (parseInt(entry.hours) || 0), 0);
+      
+      return {
+        day,
+        hours: parseFloat(hours.toFixed(1)),
+        target: 8,
+        entries: dayEntries.length
+      };
+    });
+  };
+
+  const weeklyProgress = calculateWeeklyProgress();
 
   return (
     <div className="progress-container">
