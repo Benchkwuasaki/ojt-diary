@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   TrendingUp, 
@@ -13,17 +12,22 @@ import {
   Download,
   Filter,
   MoreVertical,
-  Sparkles
+  Sparkles,
+  Image as ImageIcon,
+  X,
+  ZoomIn,
+  Eye
 } from 'lucide-react';
 import './Progress.css';
 import { auth, db, storage } from '../firebase/config';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 
 function Progress() {
   const [timeFilter, setTimeFilter] = useState('week');
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [entries, setEntries] = useState([]);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [progressData, setProgressData] = useState({
     overallProgress: 0,
     weeklyTarget: 0,
@@ -98,40 +102,53 @@ function Progress() {
     }, 500);
   };
 
-  // Fetch entries from Firestore
+  // Fetch entries from Firestore with real-time updates
   useEffect(() => {
-    const fetchEntries = async () => {
-      try {
-        setLoading(true);
-        const currentUser = auth.currentUser;
-        
-        if (!currentUser) {
-          setLoading(false);
-          return;
-        }
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser) {
+      setLoading(false);
+      return;
+    }
 
-        const entriesRef = collection(db, 'ojt_entries');
-        const q = query(entriesRef, where('userId', '==', currentUser.uid));
-        const querySnapshot = await getDocs(q);
-        
-        const fetchedEntries = [];
-        querySnapshot.forEach((doc) => {
-          fetchedEntries.push({
-            id: doc.id,
-            ...doc.data()
+    try {
+      setLoading(true);
+      
+      // Use the correct collection name 'ojtEntries' as shown in the Firebase screenshot
+      const entriesRef = collection(db, 'ojtEntries');
+      const q = query(
+        entriesRef, 
+        where('userId', '==', currentUser.uid),
+        orderBy('date', 'desc')
+      );
+      
+      // Set up real-time listener
+      const unsubscribe = onSnapshot(q, 
+        (querySnapshot) => {
+          const fetchedEntries = [];
+          querySnapshot.forEach((doc) => {
+            fetchedEntries.push({
+              id: doc.id,
+              ...doc.data()
+            });
           });
-        });
-        
-        setEntries(fetchedEntries);
-        calculateProgressMetrics(fetchedEntries);
-      } catch (error) {
-        console.error('Error fetching entries:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+          
+          console.log('Fetched entries with images:', fetchedEntries);
+          setEntries(fetchedEntries);
+          calculateProgressMetrics(fetchedEntries);
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Error fetching entries:', error);
+          setLoading(false);
+        }
+      );
 
-    fetchEntries();
+      return () => unsubscribe();
+    } catch (error) {
+      console.error('Error setting up listener:', error);
+      setLoading(false);
+    }
   }, []);
 
   // Calculate progress metrics from entries
@@ -210,48 +227,63 @@ function Progress() {
       
       return {
         day,
-        hours: parseFloat(hours.toFixed(1)),
+        hours,
         target: 8,
-        entries: dayEntries.length
+        completed: hours >= 8
       };
     });
   };
 
   const weeklyProgress = calculateWeeklyProgress();
 
+  // Get entries with images
+  const getEntriesWithImages = () => {
+    return entries.filter(entry => entry.imageUrl && entry.imageUrl.trim() !== '');
+  };
+
+  const entriesWithImages = getEntriesWithImages();
+
+  if (loading) {
+    return (
+      <div className="loading-screen">
+        <div className="loading-content">
+          <div className="loading-spinner"></div>
+          <h2>Loading progress data...</h2>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="progress-container">
       {/* Header */}
       <div className="progress-header">
-        <div className="header-left">
-          <h1 className="page-title">
-            <BarChart3 size={28} className="title-icon" />
-            Progress Tracking
-          </h1>
-          <p className="page-subtitle">Monitor your OJT journey and achievements</p>
+        <div className="header-content">
+          <h1>Training Progress</h1>
+          <p>Track your OJT performance and achievements</p>
         </div>
         <div className="header-actions">
-          <button 
-            className="filter-button"
-            onClick={() => setTimeFilter(timeFilter === 'week' ? 'month' : 'week')}
-          >
-            <Filter size={18} />
-            {timeFilters.find(f => f.id === timeFilter)?.label}
-          </button>
-          <button 
-            className="export-button"
-            onClick={exportProgress}
-            disabled={loading}
-          >
-            <Download size={18} />
-            {loading ? 'Exporting...' : 'Export Report'}
+          <div className="time-filter">
+            {timeFilters.map(filter => (
+              <button
+                key={filter.id}
+                className={`filter-btn ${timeFilter === filter.id ? 'active' : ''}`}
+                onClick={() => setTimeFilter(filter.id)}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+          <button className="export-btn" onClick={exportProgress}>
+            <Download size={16} />
+            Export Report
           </button>
         </div>
       </div>
 
-      {/* Stats Overview */}
+      {/* Stats Cards */}
       <div className="stats-grid">
-        <div className="stat-card">
+        <div className="stat-card primary">
           <div className="stat-header">
             <div className="stat-icon" style={{ background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e' }}>
               <TrendingUp size={24} />
@@ -261,14 +293,12 @@ function Progress() {
           <div className="stat-content">
             <h3 className="stat-value">{progressData.overallProgress}%</h3>
             <p className="stat-label">Overall Progress</p>
+            <p className="stat-subtext">{progressData.hoursCompleted} / {progressData.totalHours} hours completed</p>
             <div className="progress-bar">
               <div 
                 className="progress-fill"
                 style={{ width: `${progressData.overallProgress}%` }}
               />
-            </div>
-            <div className="stat-trend">
-              <span className="trend-up">↑ 5% from last week</span>
             </div>
           </div>
         </div>
@@ -276,29 +306,6 @@ function Progress() {
         <div className="stat-card">
           <div className="stat-header">
             <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
-              <Clock size={24} />
-            </div>
-            <MoreVertical size={20} className="stat-menu" />
-          </div>
-          <div className="stat-content">
-            <h3 className="stat-value">{progressData.hoursCompleted}h</h3>
-            <p className="stat-label">Hours Completed</p>
-            <p className="stat-subtext">of {progressData.totalHours}h total</p>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{ 
-                  width: `${(progressData.hoursCompleted / progressData.totalHours) * 100}%`,
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'
-                }}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-icon" style={{ background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6' }}>
               <CheckCircle size={24} />
             </div>
             <MoreVertical size={20} className="stat-menu" />
@@ -306,17 +313,18 @@ function Progress() {
           <div className="stat-content">
             <h3 className="stat-value">{progressData.completedTasks}/{progressData.totalTasks}</h3>
             <p className="stat-label">Tasks Completed</p>
-            <div className="progress-bar">
-              <div 
-                className="progress-fill"
-                style={{ 
-                  width: `${(progressData.completedTasks / progressData.totalTasks) * 100}%`,
-                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)'
-                }}
-              />
-            </div>
-            <div className="stat-trend">
-              <span className="trend-up">67% completion rate</span>
+            <p className="stat-subtext">
+              {progressData.totalTasks > 0 
+                ? Math.round((progressData.completedTasks / progressData.totalTasks) * 100) 
+                : 0}% completion rate
+            </p>
+            <div className="task-indicators">
+              {Array.from({ length: Math.min(progressData.totalTasks, 10) }).map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`task-indicator ${i < progressData.completedTasks ? 'completed' : ''}`}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -336,7 +344,7 @@ function Progress() {
               {Array.from({ length: 7 }).map((_, i) => (
                 <div 
                   key={i} 
-                  className={`streak-day ${i < 5 ? 'active' : ''}`}
+                  className={`streak-day ${i < progressData.streakDays ? 'active' : ''}`}
                   title={`Day ${i + 1}`}
                 />
               ))}
@@ -406,7 +414,7 @@ function Progress() {
           <div className="section-card">
             <div className="section-header">
               <h3>Weekly Hours</h3>
-              <span className="week-range">Jan 15-21, 2024</span>
+              <span className="week-range">Current Week</span>
             </div>
             <div className="weekly-chart">
               {weeklyProgress.map((day, index) => (
@@ -440,6 +448,62 @@ function Progress() {
                 <span>Below Target</span>
               </div>
             </div>
+          </div>
+
+          {/* Image Gallery Section */}
+          <div className="section-card image-gallery-section">
+            <div className="section-header">
+              <h3>
+                <ImageIcon size={20} style={{ marginRight: '8px' }} />
+                OJT Images Gallery
+              </h3>
+              <span className="image-count">{entriesWithImages.length} images</span>
+            </div>
+            
+            {entriesWithImages.length > 0 ? (
+              <div className="image-gallery-grid">
+                {entriesWithImages.map((entry) => (
+                  <div 
+                    key={entry.id} 
+                    className="gallery-item"
+                    onClick={() => setSelectedImage(entry)}
+                  >
+                    <div className="gallery-image-wrapper">
+                      <img 
+                        src={entry.imageUrl} 
+                        alt={entry.title}
+                        className="gallery-image"
+                      />
+                      <div className="gallery-overlay">
+                        <ZoomIn size={24} color="white" />
+                      </div>
+                    </div>
+                    <div className="gallery-info">
+                      <h4 className="gallery-title">{entry.title}</h4>
+                      <p className="gallery-date">
+                        {new Date(entry.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </p>
+                      <div className={`gallery-status ${entry.status}`}>
+                        {entry.status === 'completed' && <CheckCircle size={12} />}
+                        {entry.status === 'in-progress' && <Clock size={12} />}
+                        {entry.status === 'pending' && <Clock size={12} />}
+                        <span>{entry.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-gallery">
+                <ImageIcon size={48} color="#cbd5e1" />
+                <p>No images uploaded yet</p>
+                <p className="empty-gallery-hint">Add images to your OJT entries to see them here</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -525,6 +589,60 @@ function Progress() {
           </div>
         </div>
       </div>
+
+      {/* Image Modal */}
+      {selectedImage && (
+        <div className="image-modal-overlay" onClick={() => setSelectedImage(null)}>
+          <div className="image-modal" onClick={(e) => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={() => setSelectedImage(null)}>
+              <X size={24} />
+            </button>
+            <div className="modal-image-container">
+              <img src={selectedImage.imageUrl} alt={selectedImage.title} />
+            </div>
+            <div className="modal-details">
+              <h3>{selectedImage.title}</h3>
+              <p className="modal-description">{selectedImage.description}</p>
+              <div className="modal-meta">
+                <div className="meta-item">
+                  <Calendar size={16} />
+                  <span>{new Date(selectedImage.date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                  })}</span>
+                </div>
+                <div className="meta-item">
+                  <Clock size={16} />
+                  <span>{selectedImage.hours} hours</span>
+                </div>
+                <div className={`meta-status ${selectedImage.status}`}>
+                  {selectedImage.status === 'completed' && <CheckCircle size={16} />}
+                  {selectedImage.status === 'in-progress' && <Clock size={16} />}
+                  {selectedImage.status === 'pending' && <Clock size={16} />}
+                  <span>{selectedImage.status}</span>
+                </div>
+              </div>
+              {selectedImage.skills && selectedImage.skills.length > 0 && (
+                <div className="modal-skills">
+                  <h4>Skills:</h4>
+                  <div className="skills-tags">
+                    {selectedImage.skills.map((skill, index) => (
+                      <span key={index} className="skill-tag">{skill}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedImage.supervisor && (
+                <div className="modal-supervisor">
+                  <strong>Supervisor:</strong> {selectedImage.supervisor}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
+
+
 const firebaseConfig = {
   apiKey: "AIzaSyAO1ZGZvXZ-l9DYlKgWR-d3BSI3gsOMEoM",
   authDomain: "ojt-diary.firebaseapp.com",
