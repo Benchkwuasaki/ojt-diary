@@ -19,7 +19,6 @@ import './Sidebar.css';
 import { auth } from '../firebase/config';
 import { signOut } from 'firebase/auth';
 import logo from '../assets/58b1de71e2c14cdd7137b1576be80fcb_o.jpg';
-import Reports from '/Reports';
 
 function Sidebar({ 
   user, 
@@ -32,7 +31,6 @@ function Sidebar({
   toggleMobileMenu
 }) {
   const [isMobile, setIsMobile] = useState(false);
-  const [expandedReports, setExpandedReports] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -55,7 +53,7 @@ function Sidebar({
     { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { id: 'ojt-entries', label: 'OJT Entries', icon: <BookOpen size={20} /> },
     { id: 'calendar', label: 'Calendar', icon: <Calendar size={20} /> },
-    { id: 'reports', label: 'Reports', icon: <FileText size={20} /> },
+    { id: 'Reports', label: 'Reports', icon: <FileText size={20} /> },
     { id: 'progress', label: 'Progress', icon: <BarChart3 size={20} /> },
     { id: 'notifications', label: 'Notifications', icon: <Bell size={20} />, badge: 3 },
     { id: 'profile', label: 'Profile', icon: <User size={20} /> },
@@ -77,12 +75,7 @@ function Sidebar({
   };
 
   const handleNavClick = (itemId) => {
-    if (itemId === 'reports') {
-      setExpandedReports(!expandedReports);
-    } else {
-      setActiveSection(itemId);
-      setExpandedReports(false);
-    }
+    setActiveSection(itemId);
     if (isMobile) {
       toggleMobileMenu();
     }
@@ -213,13 +206,6 @@ function Sidebar({
             ))}
           </ul>
         </nav>
-
-        {/* Reports Section */}
-        {expandedReports && !isCollapsed && (
-          <div className="sidebar-reports-section">
-            <Reports />
-          </div>
-        )}
 
         {/* Logout Section */}
         <div className="sidebar-footer">
