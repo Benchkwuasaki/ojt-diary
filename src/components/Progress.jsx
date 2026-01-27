@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import './Progress.css';
 
+
 function Progress() {
   const [timeFilter, setTimeFilter] = useState('week');
   const [loading, setLoading] = useState(false);

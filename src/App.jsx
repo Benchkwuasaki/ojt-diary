@@ -6,7 +6,7 @@ import Sidebar from './components/Sidebar';
 import OJTEntries from './components/OJTEntries';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
-import { auth } from '../firebase/config';
+import { auth } from './firebase/config';
 import { onAuthStateChanged } from 'firebase/auth';
 import Profile from './components/Profile';
 import Progress from './components/Progress';
