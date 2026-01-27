@@ -19,6 +19,7 @@ import './Sidebar.css';
 import { auth } from '../firebase/config';
 import { signOut } from 'firebase/auth';
 import logo from '../assets/58b1de71e2c14cdd7137b1576be80fcb_o.jpg';
+import Reports from './Reports';
 
 function Sidebar({ 
   user, 
@@ -31,6 +32,7 @@ function Sidebar({
   toggleMobileMenu
 }) {
   const [isMobile, setIsMobile] = useState(false);
+  const [expandedReports, setExpandedReports] = useState(false);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -75,7 +77,12 @@ function Sidebar({
   };
 
   const handleNavClick = (itemId) => {
-    setActiveSection(itemId);
+    if (itemId === 'reports') {
+      setExpandedReports(!expandedReports);
+    } else {
+      setActiveSection(itemId);
+      setExpandedReports(false);
+    }
     if (isMobile) {
       toggleMobileMenu();
     }
@@ -206,6 +213,13 @@ function Sidebar({
             ))}
           </ul>
         </nav>
+
+        {/* Reports Section */}
+        {expandedReports && !isCollapsed && (
+          <div className="sidebar-reports-section">
+            <Reports />
+          </div>
+        )}
 
         {/* Logout Section */}
         <div className="sidebar-footer">
