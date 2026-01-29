@@ -472,6 +472,7 @@ function AuthForm({ onLogin }) {
                 onChange={handleChange}
                 required
                 minLength="6"
+                autoComplete={isLogin ? "current-password" : "new-password"}
               />
               <button 
                 type="button" 
@@ -496,6 +497,7 @@ function AuthForm({ onLogin }) {
                 onChange={handleChange}
                 required={!isLogin}
                 minLength="6"
+                autoComplete="new-password"
               />
               <button 
                 type="button" 

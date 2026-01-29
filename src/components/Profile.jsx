@@ -14,10 +14,9 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
-import { auth, storage, db } from '../firebase/config';
+import { auth, realtimeDB } from '../firebase/config';
 import { updateProfile, updatePassword, updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
-import { doc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, set, get } from 'firebase/database';
 import './Profile.css';
 
 function Profile({ user, onPhotoUpdate }) {
@@ -46,16 +45,18 @@ function Profile({ user, onPhotoUpdate }) {
   const [errors, setErrors] = useState({});
   const fileInputRef = useRef(null);
 
-  // Load user data from Firestore
+  // Load user data from Realtime Database
   useEffect(() => {
     const loadUserData = async () => {
       if (user?.uid) {
         try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            const data = userDoc.data();
+          const userRef = ref(realtimeDB, `users/${user.uid}`);
+          const snapshot = await get(userRef);
+          
+          if (snapshot.exists()) {
+            const data = snapshot.val();
             setUserData({
-              name: data.displayName || user.name || '',
+              name: data.name || user.name || '',
               email: user.email || '',
               phone: data.phone || '',
               department: data.department || 'Computer Science',
@@ -240,69 +241,39 @@ function Profile({ user, onPhotoUpdate }) {
     setUploadingPhoto(true);
     
     try {
-      // Show preview immediately
+      // Convert image to base64
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result);
+      reader.onloadend = async () => {
+        try {
+          const photoBase64 = reader.result;
+          setPhotoPreview(photoBase64);
+
+          // Update user profile in Firebase Auth
+          await updateProfile(auth.currentUser, {
+            photoURL: photoBase64
+          });
+
+          // Update in Realtime Database
+          await set(ref(realtimeDB, `users/${user.uid}/photoURL`), photoBase64);
+
+          // Notify parent component to update user state
+          if (onPhotoUpdate) {
+            onPhotoUpdate(photoBase64);
+          }
+
+          showNotification('Profile photo updated successfully!', 'success');
+        } catch (error) {
+          console.error('Error updating profile photo:', error);
+          showNotification('Failed to save profile photo. Please try again.', 'error');
+        } finally {
+          setUploadingPhoto(false);
+        }
+      };
+      reader.onerror = () => {
+        showNotification('Failed to read file. Please try again.', 'error');
+        setUploadingPhoto(false);
       };
       reader.readAsDataURL(file);
-
-      // Compress image before upload
-      const compressedFile = await compressImage(file);
-      
-      // Create a unique filename
-      const timestamp = Date.now();
-      const fileName = `${user.uid}_${timestamp}.jpg`;
-      const storageRef = ref(storage, `profile-photos/${user.uid}/${fileName}`);
-
-      // Use uploadBytesResumable for better control
-      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
-
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          // Optional: You can show progress here if needed
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          console.log(`Upload is ${progress}% done`);
-        },
-        (error) => {
-          console.error('Upload error:', error);
-          showNotification('Failed to upload photo. Please try again.', 'error');
-          setUploadingPhoto(false);
-        },
-        async () => {
-          try {
-            // Get download URL
-            const photoURL = await getDownloadURL(uploadTask.snapshot.ref);
-
-            // Update user profile in Firebase Auth
-            await updateProfile(auth.currentUser, {
-              photoURL: photoURL
-            });
-
-            // Update in Firestore
-            await updateDoc(doc(db, 'users', user.uid), {
-              photoURL: photoURL,
-              updatedAt: new Date().toISOString()
-            });
-
-            // Update photo preview
-            setPhotoPreview(photoURL);
-            
-            // Notify parent component to update user state
-            if (onPhotoUpdate) {
-              onPhotoUpdate(photoURL);
-            }
-
-            showNotification('Profile photo updated successfully!', 'success');
-          } catch (error) {
-            console.error('Error updating profile:', error);
-            showNotification('Failed to save profile changes. Please try again.', 'error');
-          } finally {
-            setUploadingPhoto(false);
-          }
-        }
-      );
     } catch (error) {
       console.error('Error processing image:', error);
       showNotification('Failed to process image. Please try again.', 'error');
@@ -327,9 +298,9 @@ function Profile({ user, onPhotoUpdate }) {
         await updateEmail(currentUser, userData.email);
       }
 
-      // Update additional data in Firestore
-      await updateDoc(doc(db, 'users', user.uid), {
-        displayName: userData.name,
+      // Update additional data in Realtime Database
+      await set(ref(realtimeDB, `users/${user.uid}`), {
+        name: userData.name,
         email: userData.email,
         phone: userData.phone,
         department: userData.department,
@@ -339,7 +310,7 @@ function Profile({ user, onPhotoUpdate }) {
       });
 
       // Update photoURL if it was changed separately
-      if (photoPreview && photoPreview.startsWith('https://')) {
+      if (photoPreview && photoPreview.startsWith('data:')) {
         await updateProfile(currentUser, {
           photoURL: photoPreview
         });

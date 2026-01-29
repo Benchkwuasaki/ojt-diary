@@ -16,40 +16,44 @@ import {
   Trophy,
   Activity
 } from 'lucide-react';
-import { db, auth } from '../firebase/config';
-import { collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
+import { auth, realtimeDB } from '../firebase/config';
+import { ref, onValue } from 'firebase/database';
 import './Dashboard.css';
 
 function Dashboard({ user, onNavigate }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Fetch user's entries from Firestore
+  // Fetch user's entries from Realtime Database
   useEffect(() => {
-    const fetchEntries = async () => {
-      if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    try {
+      const entriesRef = ref(realtimeDB, `ojtEntries/${user.uid}`);
       
-      try {
-        const entriesRef = collection(db, 'ojtEntries');
-        const q = query(entriesRef, where('userId', '==', user.uid));
+      const unsubscribe = onValue(entriesRef, (snapshot) => {
+        const data = snapshot.val();
         
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const entriesData = [];
-          querySnapshot.forEach((doc) => {
-            entriesData.push({ id: doc.id, ...doc.data() });
-          });
+        if (data) {
+          const entriesData = Object.keys(data).map(key => ({
+            id: key,
+            ...data[key]
+          }));
           setEntries(entriesData);
-          setLoading(false);
-        });
-
-        return unsubscribe;
-      } catch (error) {
-        console.error('Error fetching entries:', error);
+        } else {
+          setEntries([]);
+        }
         setLoading(false);
-      }
-    };
+      });
 
-    fetchEntries();
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error fetching entries:', error);
+      setLoading(false);
+    }
   }, [user]);
 
   // Calculate stats from user's entries

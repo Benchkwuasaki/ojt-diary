@@ -19,8 +19,8 @@ import {
   Eye
 } from 'lucide-react';
 import './Progress.css';
-import { auth, db, storage } from '../firebase/config';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { auth, realtimeDB } from '../firebase/config';
+import { ref, onValue } from 'firebase/database';
 
 function Progress() {
   const [timeFilter, setTimeFilter] = useState('week');
@@ -102,7 +102,7 @@ function Progress() {
     }, 500);
   };
 
-  // Fetch entries from Firestore with real-time updates
+  // Fetch entries from Realtime Database with real-time updates
   useEffect(() => {
     const currentUser = auth.currentUser;
     
@@ -113,25 +113,22 @@ function Progress() {
 
     try {
       setLoading(true);
-      
-      // Use the correct collection name 'ojtEntries' as shown in the Firebase screenshot
-      const entriesRef = collection(db, 'ojtEntries');
-      const q = query(
-        entriesRef, 
-        where('userId', '==', currentUser.uid),
-        orderBy('date', 'desc')
-      );
+      const entriesRef = ref(realtimeDB, `ojtEntries/${currentUser.uid}`);
       
       // Set up real-time listener
-      const unsubscribe = onSnapshot(q, 
-        (querySnapshot) => {
+      const unsubscribe = onValue(entriesRef, 
+        (snapshot) => {
+          const data = snapshot.val();
           const fetchedEntries = [];
-          querySnapshot.forEach((doc) => {
-            fetchedEntries.push({
-              id: doc.id,
-              ...doc.data()
+          
+          if (data) {
+            Object.keys(data).forEach((key) => {
+              fetchedEntries.push({
+                id: key,
+                ...data[key]
+              });
             });
-          });
+          }
           
           console.log('Fetched entries with images:', fetchedEntries);
           setEntries(fetchedEntries);

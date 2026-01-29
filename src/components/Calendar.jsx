@@ -1,8 +1,8 @@
 // src/components/Calendar.jsx - COMPLETE UPDATED VERSION
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { db, auth } from '../firebase/config';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { auth, realtimeDB } from '../firebase/config';
+import { ref, onValue } from 'firebase/database';
 import './Calendar.css';
 
 function Calendar() {
@@ -27,25 +27,27 @@ function Calendar() {
     return () => unsubscribeAuth();
   }, []);
 
-  // Fetch entries from Firestore
+  // Fetch entries from Realtime Database
   const fetchEntries = async (userId) => {
     try {
-      const entriesRef = collection(db, 'ojtEntries');
-      const q = query(
-        entriesRef, 
-        where('userId', '==', userId),
-        orderBy('date', 'desc')
-      );
+      const entriesRef = ref(realtimeDB, `ojtEntries/${userId}`);
       
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const entriesData = [];
-        querySnapshot.forEach((doc) => {
-          entriesData.push({
-            id: doc.id,
-            ...doc.data()
+      const unsubscribe = onValue(entriesRef, (snapshot) => {
+        const data = snapshot.val();
+        
+        if (data) {
+          const entriesData = Object.keys(data).map(key => ({
+            id: key,
+            ...data[key]
+          })).sort((a, b) => {
+            const dateA = new Date(a.date || 0);
+            const dateB = new Date(b.date || 0);
+            return dateB - dateA;
           });
-        });
-        setEntries(entriesData);
+          setEntries(entriesData);
+        } else {
+          setEntries([]);
+        }
         setLoading(false);
       });
 
