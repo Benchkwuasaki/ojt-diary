@@ -23,20 +23,8 @@ import {
   Image,
   Paperclip
 } from 'lucide-react';
-import { db, auth, storage } from '../firebase/config';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  onSnapshot,
-  orderBy,
-  serverTimestamp
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { auth, realtimeDB } from '../firebase/config';
+import { ref, set, remove, onValue } from 'firebase/database';
 import './OJTEntries.css';
 
 function OJTEntries() {
@@ -86,7 +74,7 @@ function OJTEntries() {
     'Project Management', 'Data Analysis', 'UI/UX Design', 'API Development'
   ];
 
-  // Load entries from Firestore
+  // Load entries from Realtime Database
   useEffect(() => {
     const user = auth.currentUser;
     
@@ -97,12 +85,7 @@ function OJTEntries() {
     }
     
     try {
-      const entriesRef = collection(db, 'ojtEntries');
-      const q = query(
-        entriesRef, 
-        where('userId', '==', user.uid),
-        orderBy('date', 'desc')
-      );
+      const entriesRef = ref(realtimeDB, `ojtEntries/${user.uid}`);
       
       const timeoutId = setTimeout(() => {
         if (loading) {
@@ -111,29 +94,34 @@ function OJTEntries() {
         }
       }, 5000);
 
-      const unsubscribe = onSnapshot(q, 
-        (querySnapshot) => {
+      const unsubscribe = onValue(entriesRef, 
+        (snapshot) => {
           clearTimeout(timeoutId);
-          const entriesData = [];
-          querySnapshot.forEach((doc) => {
-            entriesData.push({
-              id: doc.id,
-              ...doc.data()
-            });
-          });
+          const data = snapshot.val();
           
-          setEntries(entriesData);
+          if (data) {
+            const entriesData = Object.keys(data).map(key => ({
+              id: key,
+              ...data[key]
+            })).sort((a, b) => {
+              const dateA = new Date(a.date || 0);
+              const dateB = new Date(b.date || 0);
+              return dateB - dateA;
+            });
+            
+            setEntries(entriesData);
+            localStorage.setItem(`ojtEntries_${user.uid}`, JSON.stringify(entriesData));
+          } else {
+            setEntries([]);
+          }
+          
           setLoading(false);
           setError(null);
-          
-          if (entriesData.length > 0) {
-            localStorage.setItem(`ojtEntries_${user.uid}`, JSON.stringify(entriesData));
-          }
         },
         (error) => {
           clearTimeout(timeoutId);
-          console.error('Firestore error:', error);
-          setError(`Firestore error: ${error.code}`);
+          console.error('Realtime Database error:', error);
+          setError(`Database error: ${error.message}`);
           setLoading(false);
           loadFromLocalStorage();
         }
@@ -145,7 +133,7 @@ function OJTEntries() {
       };
 
     } catch (error) {
-      console.error('Error setting up Firestore listener:', error);
+      console.error('Error setting up Realtime Database listener:', error);
       setLoading(false);
       loadFromLocalStorage();
     }
@@ -176,7 +164,7 @@ function OJTEntries() {
     }
   };
 
-  // Upload image to Firebase Storage
+  // Upload image to Firebase Realtime Database as base64
   const uploadImage = async (file) => {
     const user = auth.currentUser;
     if (!user) {
@@ -186,62 +174,52 @@ function OJTEntries() {
     try {
       console.log('Starting image upload...', file.name);
       
-      // Create a unique filename with timestamp
-      const timestamp = Date.now();
-      const fileName = `${timestamp}_${file.name.replace(/\s+/g, '_')}`;
-      
-      // Create storage reference - organized by user
-      const storageRef = ref(storage, `users/${user.uid}/ojt_images/${fileName}`);
-      
-      console.log('Storage path:', `users/${user.uid}/ojt_images/${fileName}`);
-      
-      // Upload file with metadata
-      const metadata = {
-        contentType: file.type,
-        customMetadata: {
-          uploadedBy: user.uid,
-          uploadedAt: new Date().toISOString()
-        }
-      };
-      
-      const snapshot = await uploadBytes(storageRef, file, metadata);
-      console.log('Upload successful:', snapshot);
-      
-      // Get download URL
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      console.log('Download URL:', downloadURL);
-      
-      return downloadURL;
+      // Convert file to base64
+      const reader = new FileReader();
+      return new Promise((resolve, reject) => {
+        reader.onloadend = async () => {
+          try {
+            const base64Image = reader.result;
+            console.log('Image converted to base64');
+            
+            // Generate unique image ID
+            const imageId = `${Date.now()}_${Math.random().toString(36).substring(7)}`;
+            
+            // Store in Realtime Database
+            const imageRef = ref(realtimeDB, `users/${user.uid}/ojt_images/${imageId}`);
+            
+            await set(imageRef, {
+              data: base64Image,
+              fileName: file.name,
+              uploadedAt: new Date().toISOString(),
+              size: file.size
+            });
+            
+            console.log('Image uploaded to Realtime Database');
+            resolve(base64Image);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
     } catch (error) {
       console.error('Error uploading image:', error);
-      console.error('Error details:', {
-        code: error.code,
-        message: error.message,
-        serverResponse: error.serverResponse
-      });
       throw error;
     }
   };
 
-  // Delete image from Firebase Storage
-  const deleteImageFromStorage = async (imageUrl) => {
-    if (!imageUrl) return;
+  // Delete image from Firebase Realtime Database
+  const deleteImageFromStorage = async (imageBase64) => {
+    if (!imageBase64) return;
     
     try {
-      // Extract path from URL
-      const urlParts = imageUrl.split('/');
-      const encodedPath = urlParts.slice(urlParts.indexOf('o') + 1).join('/').split('?')[0];
-      const filePath = decodeURIComponent(encodedPath);
-      
-      console.log('Deleting image:', filePath);
-      
-      const imageRef = ref(storage, filePath);
-      await deleteObject(imageRef);
-      
-      console.log('Image deleted successfully');
+      // Since we're storing base64 directly in entries, we don't need to delete separately
+      // The image is automatically deleted when the entry is deleted
+      console.log('Image data will be removed with entry deletion');
     } catch (error) {
       console.error('Error deleting image:', error);
-      // Don't throw error - continue even if deletion fails
     }
   };
 
@@ -258,7 +236,7 @@ function OJTEntries() {
     }, 3000);
   };
 
-  // Save entry to Firestore
+  // Save entry to Realtime Database
   const saveEntryToFirestore = async (entryData, isUpdate = false) => {
     const user = auth.currentUser;
     if (!user) {
@@ -269,22 +247,24 @@ function OJTEntries() {
       const entryWithMetadata = {
         ...entryData,
         userId: user.uid,
-        updatedAt: serverTimestamp(),
-        ...(isUpdate ? {} : { createdAt: serverTimestamp() })
+        updatedAt: new Date().toISOString(),
+        ...(isUpdate ? {} : { createdAt: new Date().toISOString() })
       };
 
       if (isUpdate && selectedEntry) {
-        const entryRef = doc(db, 'ojtEntries', selectedEntry.id);
-        await updateDoc(entryRef, entryWithMetadata);
-        console.log('Entry updated in Firestore');
+        const entryRef = ref(realtimeDB, `ojtEntries/${user.uid}/${selectedEntry.id}`);
+        await set(entryRef, entryWithMetadata);
+        console.log('Entry updated in Realtime Database');
       } else {
-        const docRef = await addDoc(collection(db, 'ojtEntries'), entryWithMetadata);
-        console.log('Entry added to Firestore with ID:', docRef.id);
+        const newEntryId = Date.now().toString();
+        const entryRef = ref(realtimeDB, `ojtEntries/${user.uid}/${newEntryId}`);
+        await set(entryRef, entryWithMetadata);
+        console.log('Entry added to Realtime Database with ID:', newEntryId);
       }
       
       return true;
     } catch (error) {
-      console.error('Error saving to Firestore:', error);
+      console.error('Error saving to Realtime Database:', error);
       throw error;
     }
   };
@@ -365,15 +345,15 @@ function OJTEntries() {
       
       resetForm();
       setIsModalOpen(false);
-    } catch (firestoreError) {
-      console.error('Firestore error:', firestoreError);
+    } catch (databaseError) {
+      console.error('Realtime Database error:', databaseError);
       
       // Fallback to local storage
       const localStorageSuccess = saveEntryToLocalStorage(formData, isEditMode);
       
       if (localStorageSuccess) {
         showNotification(
-          `${isEditMode ? 'Entry updated' : 'Entry added'} locally (Firestore unavailable)`,
+          `${isEditMode ? 'Entry updated' : 'Entry added'} locally (Database unavailable)`,
           'info'
         );
         
@@ -399,12 +379,15 @@ function OJTEntries() {
         await deleteImageFromStorage(entryToDelete.imageUrl);
       }
       
-      await deleteDoc(doc(db, 'ojtEntries', id));
+      const user = auth.currentUser;
+      if (user) {
+        const entryRef = ref(realtimeDB, `ojtEntries/${user.uid}/${id}`);
+        await remove(entryRef);
+      }
       
       showNotification('Entry deleted successfully!');
       
       // Update local storage
-      const user = auth.currentUser;
       if (user) {
         const savedEntries = localStorage.getItem(`ojtEntries_${user.uid}`);
         if (savedEntries) {
@@ -414,7 +397,7 @@ function OJTEntries() {
         }
       }
     } catch (error) {
-      console.error('Error deleting from Firestore:', error);
+      console.error('Error deleting from Realtime Database:', error);
       
       const user = auth.currentUser;
       if (user) {
@@ -427,7 +410,7 @@ function OJTEntries() {
         }
       }
       
-      showNotification('Entry deleted locally (Firestore unavailable)', 'info');
+      showNotification('Entry deleted locally (Database unavailable)', 'info');
     }
   };
 
@@ -784,7 +767,13 @@ function OJTEntries() {
                 <img 
                   src={entry.imageUrl} 
                   alt={entry.title}
-                  onClick={() => window.open(entry.imageUrl, '_blank')}
+                  onClick={() => {
+                    // Open in a modal or new window if it's a data URL
+                    if (entry.imageUrl.startsWith('data:')) {
+                      const newWindow = window.open();
+                      newWindow.document.write('<img src="' + entry.imageUrl + '" style="max-width:100%; max-height:100%;"/>');
+                    }
+                  }}
                 />
               </div>
             )}
@@ -800,7 +789,12 @@ function OJTEntries() {
                 {entry.imageUrl && (
                   <button 
                     className="action-btn view-btn" 
-                    onClick={() => window.open(entry.imageUrl, '_blank')}
+                    onClick={() => {
+                      if (entry.imageUrl.startsWith('data:')) {
+                        const newWindow = window.open();
+                        newWindow.document.write('<img src="' + entry.imageUrl + '" style="max-width:100%; max-height:100%;"/>');
+                      }
+                    }}
                     title="View image"
                   >
                     <Image size={16} />
@@ -1075,7 +1069,10 @@ function OJTEntries() {
                             className="image-action-btn"
                             onClick={(e) => {
                               e.stopPropagation();
-                              window.open(formData.imageUrl, '_blank');
+                              if (formData.imageUrl.startsWith('data:')) {
+                                const newWindow = window.open();
+                                newWindow.document.write('<img src="' + formData.imageUrl + '" style="max-width:100%; max-height:100%;"/>');
+                              }
                             }}
                             title="View image"
                           >

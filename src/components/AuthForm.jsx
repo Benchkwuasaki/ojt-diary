@@ -6,14 +6,14 @@ import {
   AlertCircle, X, CheckCircle 
 } from 'lucide-react';
 import benchlogo from '../assets/58b1de71e2c14cdd7137b1576be80fcb_o.jpg';
-import { auth, db } from '../firebase/config';
+import { auth, realtimeDB } from '../firebase/config';
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword,
   updateProfile,
   signOut
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { ref, set } from 'firebase/database';
 
 // Error Notification Component
 const ErrorNotification = ({ message, onClose }) => {
@@ -221,8 +221,8 @@ function AuthForm({ onLogin }) {
             displayName: formData.name
           });
 
-          // Save additional user data to Firestore
-          await setDoc(doc(db, 'users', userCredential.user.uid), {
+          // Save additional user data to Realtime Database
+          await set(ref(realtimeDB, `users/${userCredential.user.uid}`), {
             name: formData.name,
             email: formData.email,
             createdAt: new Date().toISOString(),
